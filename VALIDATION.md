@@ -85,17 +85,19 @@ weaken tests.
   foreground/background lifecycle, and memory-pressure stress: **not verified**.
 - AMD64 TLS pseudo-instruction's interior PUSH/CALL/POP lacks independently
   represented PCSP metadata. Existing host tests are not an asynchronous
-  unwind proof. See the [core platform document](https://github.com/ZxillyFork/go-hmos/blob/feature/openharmony-go1.27/doc/openharmony.md)
+  unwind proof. See the [core platform document](https://github.com/ZxillyFork/go-hmos/blob/fcaf70eef17b74d6acb8fd220d80edab8fdf3799/doc/openharmony.md)
   for this and runtime restrictions.
 
 ## Current source pin
 
-The initial build repository intentionally leaves `source.json` unpinned while
-the independent `runtime.GOOS = "openharmony"` implementation is completed.
-Default pushes run only offline helper tests; host/SDK builds are skipped,
-not marked as validated. Manual dispatch requires an explicit reviewed full
-`core_sha` until a final default pin is committed. No earlier intermediate
-core SHA is silently selected.
+The default source is
+[`fcaf70eef17b74d6acb8fd220d80edab8fdf3799`](https://github.com/ZxillyFork/go-hmos/commit/fcaf70eef17b74d6acb8fd220d80edab8fdf3799),
+published with the independent `runtime.GOOS = "openharmony"` implementation.
+The core no longer exports `runtime.IsOpenharmony`. Historical simulations above
+were performed before that identity change and must not be attributed to the
+new revision. Host and real SDK checks for this exact source are being run in
+this separate repository; their terminal results must be recorded before
+claiming they passed. Device execution is still not performed.
 
 ## Independent automation checks
 
@@ -129,8 +131,10 @@ The first separate workflow run
 failed GitHub's workflow validation before any job began: `runner.temp` was
 used in job-level `env`, where that context is unavailable. The workflow now
 uses `github.workspace` for those ignored temporary directories, and an offline
-regression test rejects unsupported job-environment contexts. A subsequent
-GitHub run is required to verify the correction.
+regression test rejects unsupported job-environment contexts. The corrected run
+[37811163764](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37811163764)
+passed the offline checks. Its host and SDK jobs were intentionally skipped
+because the default core pin was still unset at that point.
 
 ## Reproduce the real next validation stage
 

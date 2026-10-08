@@ -8,14 +8,14 @@ Go 核心仓库只保留移植代码、测试和平台文档；GitHub Actions、
 **移植仍是实验性的。交叉编译成功不代表已在 OpenHarmony 或 HarmonyOS NEXT
 设备上运行。** 当前已完成和未完成的验证分别记录在 [VALIDATION.md](VALIDATION.md)。
 目标平台限制见核心仓库的
-[平台说明](https://github.com/ZxillyFork/go-hmos/blob/feature/openharmony-go1.27/doc/openharmony.md)。
+[平台说明](https://github.com/ZxillyFork/go-hmos/blob/fcaf70eef17b74d6acb8fd220d80edab8fdf3799/doc/openharmony.md)。
 
 ## 当前源代码固定状态
 
-初始仓库暂不固定核心提交，等待独立 `runtime.GOOS = "openharmony"` 身份修改完成。
-因此默认推送只运行离线脚本自测，不会用旧提交构建，也不会将跳过的核心检查算作通过。
-手动构建现在必须填写审查过的完整 `core_sha`。确认最终核心提交后，将它写入
-`source.json`，默认 host 检查随即启用；SDK 检查仍需明确选择 `sdk=true`。
+默认核心提交为 [fcaf70eef17b](https://github.com/ZxillyFork/go-hmos/commit/fcaf70eef17b74d6acb8fd220d80edab8fdf3799)，
+其中 `runtime.GOOS` 和 `go env GOOS` 均以 `openharmony` 作为独立系统身份。
+默认推送运行 host 检查；真实 SDK 检查仍需手动选择 `sdk=true`。
+[VALIDATION.md](VALIDATION.md) 区分该提交的已完成检查、正在运行的检查和未运行项目。
 
 ## GitHub Actions
 
@@ -53,8 +53,7 @@ SDK 的点击确认条款；使用前请阅读 SDK 随附许可。
 git clone https://github.com/ZxillyFork/go-hmos-build.git
 cd go-hmos-build
 git clone https://github.com/ZxillyFork/go-hmos.git source
-# source.json 尚未固定时，先设置 CORE_SHA 为审查过的完整 40 位核心提交。
-# 固定后可省略 CORE_SHA。
+# 默认使用 source.json；CORE_SHA 可显式选择另一个审查过的完整 40 位提交。
 core_sha=$(python3 scripts/source-pin.py --revision "${CORE_SHA:-}") || exit 1
 git -C source checkout --detach "$core_sha"
 export GO_SOURCE_ROOT="$PWD/source"
