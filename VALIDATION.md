@@ -85,22 +85,47 @@ weaken tests.
 - Target DNS/network-id behavior, certificate-service integration, system
   timezone-parameter synchronization, application permissions/signing,
   foreground/background lifecycle, and memory-pressure stress: **not verified**.
-- Actual target asynchronous unwinding remains unverified. The earlier
-  `fcaf70e` TLS expansion lacked independently represented AMD64 PCSP metadata;
-  the reviewed source now adds explicit metadata and unsafe-point regressions.
-  Compiler-table tests are not proof of device runtime behavior. See the
+- The earlier hidden-stack metadata limitation is fixed in reviewed core
+  `50a9db3`: AMD64 TLS expansion now has explicit PCSP/unsafe-point metadata,
+  with independent emitted-object checks as well as regression-table coverage.
+  Actual device unwinding and unwinding through the external TLS resolver
+  remain unverified; host/compiler checks do not prove those behaviors. See the
   [current platform document](https://github.com/ZxillyFork/go-hmos/blob/50a9db343e53ec569374c328998b3ffbada8f850/doc/openharmony.md).
 
-## Current source pin
+## Current source pin: reviewed revision passed
 
-The reviewed source is
-[`50a9db343e53ec569374c328998b3ffbada8f850`](https://github.com/ZxillyFork/go-hmos/commit/50a9db343e53ec569374c328998b3ffbada8f850).
-The build repository is repinned to this exact source. Host checks now include
-`cmd/internal/buildid`, alongside `cmd/internal/obj/arm64` and
-`cmd/internal/obj/x86`, so the ELF-note, ARM64 TLS macro/stack, and AMD64
-PCSP/unsafe-point regressions are included. Host and SDK runs for this source
-are pending; the older successful SDK run below is not a result for this new
-revision. Device execution is still not performed.
+Core commit
+[`50a9db343e53ec569374c328998b3ffbada8f850`](https://github.com/ZxillyFork/go-hmos/commit/50a9db343e53ec569374c328998b3ffbada8f850)
+passed all jobs in
+[run 37819269863](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37819269863),
+using build-repository commit `d305f22ce07c78d702d561f2f8567a972aa67584`.
+The separate automatic host run
+[37819196870](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37819196870)
+also passed. This supersedes the earlier source results below for the default pin.
+
+- Host bootstrap, compiler build IDs, shared-bootstrap-cache regression,
+  platform/build-tag/codegen packages, API compatibility, command-driver check,
+  and both target runtime Go/assembly builds passed.
+- Host coverage includes `cmd/internal/buildid`, `cmd/internal/obj/arm64`, and
+  `cmd/internal/obj/x86`: ELF-note, ARM64 TLS macro/stack, and AMD64
+  PCSP/unsafe-point regressions are included.
+- The official SDK archive again matched SHA-256
+  `b833b75a64ee46bbd7880921abbb49b733ec5c8171b6684c9b524d57f624cee0`.
+- ARM64 and AMD64 c-shared, c-archive, PIE, C loader, netgo shared-library,
+  ELF architecture/TLS/stack/interpreter checks, six target standard-library
+  test binary builds, and the target go/gofmt/compiler-tool builds passed.
+- The SDK log records ARM64 PASS at 17:54:27 UTC and AMD64 PASS at 17:56:19 UTC
+  on 2026-10-08, each explicitly stating `DEVICE EXECUTION NOT PERFORMED`.
+
+The [final compile-only artifact](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37819269863/artifacts/11568603557)
+is artifact `11568603557`: 66 files, 205,523,805-byte ZIP, SHA-256
+`185d641428bce342e6eaaa3ca3827b49fe3d7640dcfa3fcb23f3450775ea956a`.
+All 66 files were downloaded; both architecture source markers match the exact
+core SHA, status files report exit 0/no device execution, and ELF reports were
+inspected without executing target code. Its configured expiry is 2026-10-22.
+It is not a supported release or complete installation. No target binary execution, real-device testing, emulator run,
+HAP/N-API deployment, native self-bootstrap, or full target test-suite pass is
+claimed. These results apply to this exact core revision only.
 
 ## Earlier independent-GOOS source
 
