@@ -14,8 +14,12 @@ Go 核心仓库只保留移植代码、测试和平台文档；GitHub Actions、
 
 默认核心提交为 [fcaf70eef17b](https://github.com/ZxillyFork/go-hmos/commit/fcaf70eef17b74d6acb8fd220d80edab8fdf3799)，
 其中 `runtime.GOOS` 和 `go env GOOS` 均以 `openharmony` 作为独立系统身份。
+该提交已通过 Linux host/API/codegen 检查，以及官方 OpenHarmony 6.1 SDK 的
+ARM64、AMD64 真实编译/链接/ELF 检查，见
+[通过的验证运行](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37813650175)。
+这没有执行目标二进制，不能作为真机运行或完整标准库测试通过的证明。
 默认推送运行 host 检查；真实 SDK 检查仍需手动选择 `sdk=true`。
-[VALIDATION.md](VALIDATION.md) 区分该提交的已完成检查、正在运行的检查和未运行项目。
+[VALIDATION.md](VALIDATION.md) 记录精确提交、工件和未验证项目。
 
 ## GitHub Actions
 

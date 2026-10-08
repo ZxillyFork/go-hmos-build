@@ -4,7 +4,8 @@ This record distinguishes compilation, Linux-host ABI simulation, and real
 OpenHarmony execution. **No OpenHarmony SDK-linked binary or actual device has
 been executed for this change.** The port remains experimental and the core PR is a draft. This repository
 contains build automation only; historical core results below do not establish
-a passing run of the newly separated workflow.
+validation for a different source revision. Exact GitHub SDK results are
+recorded below.
 
 ## Passed locally
 
@@ -75,8 +76,9 @@ weaken tests.
   subsequently downloaded the official 2.3 GB public SDK and verified its
   SHA-256, then failed during native-compiler discovery after extraction.
   The helper now follows valid LLVM clang symlinks and prints the actual
-  layout if discovery still fails. Real SDK linking remains unverified until
-  the corrected job completes. No device execution has occurred.
+  layout if discovery still fails. That earlier run never reached linking.
+  The successful exact-source SDK run recorded below supersedes this earlier
+  download/discovery blocker. No device execution has occurred.
 - Physical OpenHarmony/HarmonyOS NEXT device, x86_64 full-system emulator,
   signed HAP/N-API integration, native self-bootstrap, and complete target
   runtime/stdlib suites: **never run**.
@@ -105,9 +107,44 @@ compiler probes also passed. The verified SDK archive digest was
 Both architecture builds then failed before Go fixture compilation because the
 wrapper supplied an absolute package directory in GOPATH mode. The wrapper now
 builds `./library` and `./hello` from the fixture directory; a regression test
-covers the actual working directory, arguments, and failure exit status. A new
-SDK run is required to establish cross-linking. Device execution is still not
-performed.
+covers the actual working directory, arguments, and failure exit status. The corrected run below subsequently established SDK cross-linking for this
+same source revision. Device execution is still not performed.
+
+## Passed with the official SDK on GitHub
+
+[Run 37813650175](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37813650175)
+completed successfully using build-repository commit
+`31771e5823e7e82df3cbc94b6582bbbac55e8d3c` and core commit
+`fcaf70eef17b74d6acb8fd220d80edab8fdf3799`. These results apply only to that core
+revision; later review changes need their own validation.
+
+- Host bootstrap, distinct compile/asm/link build-ID assertions,
+  shared-bootstrap-cache regression, focused host/codegen tests, API check,
+  command-driver check, and both target runtime Go/assembly builds passed.
+- Official public OpenHarmony 6.1 SDK downloaded and matched SHA-256
+  `b833b75a64ee46bbd7880921abbb49b733ec5c8171b6684c9b524d57f624cee0`.
+  The compiler reports OHOS clang 15.0.4, LLVM revision
+  `feef13a36e78b7a2ff3e9e3f180a958f2782be1e`.
+- Both `aarch64-linux-ohos` and `x86_64-linux-ohos` passed c-shared, c-archive,
+  PIE, C loader, and netgo shared-library compilation/linking.
+- Real ELF inspection found the expected architecture, PT_TLS, TLSDESC
+  relocations, a non-executable GNU_STACK, and the expected musl interpreter
+  for PIE. Initial-exec TLS markers and TEXTREL were absent.
+- Target test binaries compiled for runtime, os/signal, runtime/pprof, net,
+  time, and crypto/x509. These tests were **not executed**.
+- Target go, gofmt, asm, cgo, compile, cover, fix, link, preprofile, vet, and
+  dist executables compiled. These tools were **not executed on the target**.
+- Both architecture status files record `exit_status=0` and
+  `device_execution=not_performed`. All 66 artifact files were downloaded and
+  their source markers and ELF reports inspected without executing them.
+
+[Compile-only artifact](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37813650175/artifacts/11566202919)
+contains the binaries and reports; its configured expiry is 2026-10-22.
+It is not a supported release or a complete install package. The automatic
+host run [37813537193](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37813537193)
+also passed for the same source pin. No device, simulator, HAP/N-API deployment,
+native self-bootstrap, or complete target runtime/stdlib execution is established
+by these results.
 
 ## Independent automation checks
 
@@ -129,9 +166,9 @@ workflow or installer to the Go core tree. Locally passed:
   initially empty; the separate core validation owns the polluted-cache result.
   CI runs this regression after actually bootstrapping into that cache.
 
-These are script checks, not SDK compilation. The workflow's actual SDK run must
-still complete. It records both architecture outcomes independently and retains
-available diagnostics even when one fails. Each run records the exact core SHA,
+These offline tests are script checks, not SDK compilation. The separate real
+SDK result is recorded below. The workflow records both architecture outcomes
+independently and retains available diagnostics even when one fails. Each run records the exact core SHA,
 SDK URL, downloaded official checksum, compiler version, ELF evidence, and a
 compile-only scope marker. The SDK checksum is obtained from the official
 server during the run; it is not a historical digest pinned in this repository.
