@@ -66,7 +66,7 @@ jobs:
     timeout-minutes: 30
     env:
       GO_SOURCE_ROOT: ${{ github.workspace }}/source
-      GO_HMOS_CACHE_ROOT: ${{ runner.temp }}/go-hmos-cache
+      GO_HMOS_CACHE_ROOT: ${{ github.workspace }}/.cache
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -97,8 +97,8 @@ jobs:
     timeout-minutes: 60
     env:
       GO_SOURCE_ROOT: ${{ github.workspace }}/source
-      GO_HMOS_CACHE_ROOT: ${{ runner.temp }}/go-hmos-cache
-      SDK_DOWNLOAD_DIR: ${{ runner.temp }}/ohos-sdk
+      GO_HMOS_CACHE_ROOT: ${{ github.workspace }}/.cache
+      SDK_DOWNLOAD_DIR: ${{ github.workspace }}/.sdk
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

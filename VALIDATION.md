@@ -103,11 +103,11 @@ The automation was moved into `ZxillyFork/go-hmos-build`, without adding a
 workflow or installer to the Go core tree. Locally passed:
 
 - Bash syntax checks for every shell helper.
-- Ten offline Python regression tests covering full-SHA input validation,
+- Eleven offline Python regression tests covering full-SHA input validation,
   compiler symlink discovery through real tar/zip extraction, checksum mismatch,
   invalid checksum responses, missing compilers, overwrite refusal, and missing
-  SDK/unsupported-architecture rejection.
-- YAML parse and workflow structure inspection.
+  SDK/unsupported-architecture rejection, and valid job-level workflow contexts.
+- YAML parse, workflow structure inspection, and actionlint v1.7.7 validation.
 - The complete `scripts/test-host.sh` run against the locally rebuilt
   cleanup/cache-fix worktree passed, including all three compiler build-ID
   assertions, focused packages, API check, command-driver test, and ARM64/AMD64
@@ -123,6 +123,14 @@ available diagnostics even when one fails. Each run records the exact core SHA,
 SDK URL, downloaded official checksum, compiler version, ELF evidence, and a
 compile-only scope marker. The SDK checksum is obtained from the official
 server during the run; it is not a historical digest pinned in this repository.
+
+The first separate workflow run
+[37810521458](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37810521458)
+failed GitHub's workflow validation before any job began: `runner.temp` was
+used in job-level `env`, where that context is unavailable. The workflow now
+uses `github.workspace` for those ignored temporary directories, and an offline
+regression test rejects unsupported job-environment contexts. A subsequent
+GitHub run is required to verify the correction.
 
 ## Reproduce the real next validation stage
 

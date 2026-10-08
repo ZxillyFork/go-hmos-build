@@ -7,6 +7,7 @@ import hashlib
 import io
 import json
 import os
+import re
 from pathlib import Path
 import stat
 import subprocess
@@ -133,6 +134,18 @@ shutil.copyfile(source, target)
         result = run("download-sdk.sh", env=self.env)
         self.assertEqual(result.returncode, 2)
         self.assertEqual(marker.read_text(), "keep existing SDK\n")
+
+
+class WorkflowTest(unittest.TestCase):
+    def test_job_environment_uses_supported_contexts(self):
+        workflow = (ROOT / ".github/workflows/openharmony.yml").read_text()
+        allowed = {"github", "needs", "strategy", "matrix", "vars", "secrets", "inputs"}
+        # This workflow's job-level env entries are six-space uppercase keys.
+        # runner is available at step scope, but invalid at job env scope.
+        for line in workflow.splitlines():
+            if re.match(r"^ {6}[A-Z_]+:", line):
+                for context in re.findall(r"\$\{\{\s*(\w+)\.", line):
+                    self.assertIn(context, allowed, line)
 
 
 class BuildPreconditionTest(unittest.TestCase):
