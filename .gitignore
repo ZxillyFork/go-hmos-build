@@ -1,0 +1,8 @@
+.cache/
+openharmony-out/
+source/
+__pycache__/
+*.pyc
+
+.handoff/
+*.log

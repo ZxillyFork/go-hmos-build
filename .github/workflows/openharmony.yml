@@ -1,0 +1,146 @@
+name: OpenHarmony build and checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      core_sha:
+        description: Full 40-character ZxillyFork/go-hmos commit SHA (blank uses source.json)
+        type: string
+        required: false
+      sdk:
+        description: Download checksum-verified public SDK and cross-link both architectures (about 2.3 GB)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  GOTOOLCHAIN: local
+  GOENV: 'off'
+
+jobs:
+  scripts-and-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      core_sha: ${{ steps.source.outputs.core_sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check helper scripts without downloading an SDK
+        run: |
+          for script in scripts/*.sh; do bash -n "$script"; done
+          python3 -m unittest discover -s tests -v
+      - name: Validate the exact source revision
+        id: source
+        env:
+          REQUESTED_SHA: ${{ inputs.core_sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
+            core_sha=$(python3 scripts/source-pin.py --revision "$REQUESTED_SHA")
+          else
+            core_sha=$(python3 scripts/source-pin.py --allow-unset)
+          fi
+          printf 'core_sha=%s\n' "$core_sha" >> "$GITHUB_OUTPUT"
+          if [[ -n "$core_sha" ]]; then
+            printf 'Core: ZxillyFork/go-hmos@%s\n' "$core_sha" >> "$GITHUB_STEP_SUMMARY"
+          else
+            printf 'No core revision pinned yet: offline helper checks only; core builds intentionally skipped.\n' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  host-and-codegen:
+    needs: scripts-and-source
+    if: needs.scripts-and-source.outputs.core_sha != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GO_SOURCE_ROOT: ${{ github.workspace }}/source
+      GO_HMOS_CACHE_ROOT: ${{ runner.temp }}/go-hmos-cache
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ZxillyFork/go-hmos
+          ref: ${{ needs.scripts-and-source.outputs.core_sha }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: 1.27.1
+          cache: false
+      - name: Verify checkout and bootstrap the modified host toolchain
+        env:
+          EXPECTED_SHA: ${{ needs.scripts-and-source.outputs.core_sha }}
+        run: |
+          test "$(git -C "$GO_SOURCE_ROOT" rev-parse HEAD)" = "$EXPECTED_SHA"
+          bash scripts/bootstrap.sh
+      - name: Host, cache-identity, API, and Go/assembly cross-compilation checks
+        run: bash scripts/test-host.sh
+
+  sdk-cross-link:
+    needs: scripts-and-source
+    if: github.event_name == 'workflow_dispatch' && inputs.sdk && needs.scripts-and-source.outputs.core_sha != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      GO_SOURCE_ROOT: ${{ github.workspace }}/source
+      GO_HMOS_CACHE_ROOT: ${{ runner.temp }}/go-hmos-cache
+      SDK_DOWNLOAD_DIR: ${{ runner.temp }}/ohos-sdk
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ZxillyFork/go-hmos
+          ref: ${{ needs.scripts-and-source.outputs.core_sha }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: 1.27.1
+          cache: false
+      - name: Verify checkout and bootstrap
+        env:
+          EXPECTED_SHA: ${{ needs.scripts-and-source.outputs.core_sha }}
+        run: |
+          test "$(git -C "$GO_SOURCE_ROOT" rev-parse HEAD)" = "$EXPECTED_SHA"
+          bash scripts/bootstrap.sh
+      - name: Fetch the checksum-verified official public SDK
+        run: bash scripts/download-sdk.sh
+      - name: SDK compile, external link, and ELF inspection only
+        run: |
+          export OHOS_NDK_HOME="$(cat "$SDK_DOWNLOAD_DIR/native-path.txt")"
+          mkdir -p openharmony-out
+          cp "$SDK_DOWNLOAD_DIR/sdk.sha256" "$SDK_DOWNLOAD_DIR/sdk-url.txt" openharmony-out/
+          status=0
+          for arch in arm64 amd64; do
+            if GOARCH="$arch" BUILD_NATIVE_TOOLS=1 bash scripts/build.sh; then
+              printf '%s: SDK compile/link checks passed; device execution NOT performed.\n' "$arch" >> "$GITHUB_STEP_SUMMARY"
+            else
+              printf '%s: SDK compile/link checks FAILED; inspect logs and partial artifacts.\n' "$arch" >> "$GITHUB_STEP_SUMMARY"
+              status=1
+            fi
+          done
+          exit "$status"
+      - name: Keep compile-only artifacts and diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: openharmony-compile-only-${{ needs.scripts-and-source.outputs.core_sha }}
+          path: openharmony-out/
+          if-no-files-found: warn
+          retention-days: 14
