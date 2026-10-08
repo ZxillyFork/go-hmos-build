@@ -51,9 +51,16 @@ printf '#ifndef __OHOS__\n#error expected OpenHarmony SDK compiler\n#endif\n#inc
 "$root/bin/go" env GOOS GOARCH CGO_ENABLED GOROOT > "$out/target-env.txt"
 git -C "$root" rev-parse HEAD > "$out/source-revision.txt"
 printf 'compile/link/ELF inspection only; device execution NOT PERFORMED\n' > "$out/validation-scope.txt"
-"$root/bin/go" build -trimpath -buildmode=c-shared -o "$out/libgo_hmos_test.so" "$fixtures/library"
-"$root/bin/go" build -trimpath -buildmode=c-archive -o "$out/libgo_hmos_test.a" "$fixtures/library"
-"$root/bin/go" build -trimpath -buildmode=pie -o "$out/hello" "$fixtures/hello"
+# In GOPATH mode, Go accepts relative package directories, not absolute ones.
+# Keep these fixtures in the source checkout instead of copying them here.
+build_fixture() {
+  local package=$1
+  shift
+  (cd "$fixtures" && "$root/bin/go" build "$@" "./$package")
+}
+build_fixture library -trimpath -buildmode=c-shared -o "$out/libgo_hmos_test.so"
+build_fixture library -trimpath -buildmode=c-archive -o "$out/libgo_hmos_test.a"
+build_fixture hello -trimpath -buildmode=pie -o "$out/hello"
 "$CC" -O2 -pthread "$fixtures/loader.c" -ldl -o "$out/loader"
 readelf="$ndk/llvm/bin/llvm-readelf"
 "$readelf" -h -l -d -r --wide "$out/libgo_hmos_test.so" > "$out/library-elf.txt"
@@ -74,7 +81,7 @@ grep -Fq "$interpreter" "$out/executable-elf.txt" || { echo "wrong SDK ELF inter
 grep -Eq 'Type:.*DYN' "$out/executable-elf.txt" || { echo "expected PIE" >&2; exit 1; }
 # Exercise netgo file selection even though platform interface discovery still
 # correctly needs libc. DNS via netgo is opt-in and may lack system netid policy.
-"$root/bin/go" build -tags=netgo -buildmode=c-shared -o "$out/libgo_hmos_netgo.so" "$fixtures/library"
+build_fixture library -tags=netgo -buildmode=c-shared -o "$out/libgo_hmos_netgo.so"
 for package in runtime os/signal runtime/pprof net time crypto/x509; do
   "${root}/bin/go" test -c -o "$out/${package//\//_}.test" "$package"
 done

@@ -95,9 +95,19 @@ The default source is
 published with the independent `runtime.GOOS = "openharmony"` implementation.
 The core no longer exports `runtime.IsOpenharmony`. Historical simulations above
 were performed before that identity change and must not be attributed to the
-new revision. Host and real SDK checks for this exact source are being run in
-this separate repository; their terminal results must be recorded before
-claiming they passed. Device execution is still not performed.
+new revision. In manual run
+[37812418177](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37812418177),
+the host/cache/codegen/API checks passed for this exact source. SDK download,
+official SHA-256 verification, extraction, clang discovery, and both target C
+compiler probes also passed. The verified SDK archive digest was
+`b833b75a64ee46bbd7880921abbb49b733ec5c8171b6684c9b524d57f624cee0`.
+
+Both architecture builds then failed before Go fixture compilation because the
+wrapper supplied an absolute package directory in GOPATH mode. The wrapper now
+builds `./library` and `./hello` from the fixture directory; a regression test
+covers the actual working directory, arguments, and failure exit status. A new
+SDK run is required to establish cross-linking. Device execution is still not
+performed.
 
 ## Independent automation checks
 
@@ -105,10 +115,10 @@ The automation was moved into `ZxillyFork/go-hmos-build`, without adding a
 workflow or installer to the Go core tree. Locally passed:
 
 - Bash syntax checks for every shell helper.
-- Eleven offline Python regression tests covering full-SHA input validation,
+- Twelve offline Python regression tests covering full-SHA input validation,
   compiler symlink discovery through real tar/zip extraction, checksum mismatch,
   invalid checksum responses, missing compilers, overwrite refusal, and missing
-  SDK/unsupported-architecture rejection, and valid job-level workflow contexts.
+  SDK/unsupported-architecture rejection, valid job-level workflow contexts, and relative fixture import paths with preserved failure status.
 - YAML parse, workflow structure inspection, and actionlint v1.7.7 validation.
 - The complete `scripts/test-host.sh` run against the locally rebuilt
   cleanup/cache-fix worktree passed, including all three compiler build-ID

@@ -154,6 +154,51 @@ class BuildPreconditionTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Set OHOS_NDK_HOME", result.stderr)
 
+    def test_fixture_build_uses_relative_package_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "src").mkdir()
+            (root / "src/make.bash").touch()
+            (root / "VERSION").write_text("go1.27.1-hmos-devel\n")
+            fixtures = root / "src/cmd/cgo/internal/testcshared/testdata/openharmony"
+            for name in ("library/main.go", "hello/main.go", "loader.c"):
+                target = fixtures / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.touch()
+            native = root / "native"
+            (native / "llvm/bin").mkdir(parents=True)
+            (native / "sysroot/usr/include").mkdir(parents=True)
+            for name in ("clang", "clang++", "llvm-readelf"):
+                tool = native / "llvm/bin" / name
+                tool.write_text("#!/bin/sh\nexit 0\n")
+                tool.chmod(0o755)
+            (root / "bin").mkdir()
+            go = root / "bin/go"
+            go.write_text("#!/usr/bin/env python3\nimport json,os,sys\n"
+                          "from pathlib import Path\n"
+                          "if sys.argv[1] == 'build':\n"
+                          "    Path(os.environ['MOCK_BUILD_LOG']).write_text(json.dumps({'cwd':os.getcwd(),'args':sys.argv[1:]}))\n"
+                          "    sys.exit(77)\n")
+            go.chmod(0o755)
+            git = root / "bin/git"
+            git.write_text("#!/bin/sh\nprintf '%s\\n' aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n")
+            git.chmod(0o755)
+            log = root / "build.json"
+            out = root / "out"
+            result = run("build.sh", env={"OHOS_NDK_HOME": str(native),
+                         "GO_SOURCE_ROOT": directory, "GOARCH": "arm64",
+                         "GO_HMOS_CACHE_ROOT": str(root / "cache"), "OUT_DIR": str(out),
+                         "PATH": str(root / "bin") + os.pathsep + os.environ["PATH"],
+                         "MOCK_BUILD_LOG": str(log)})
+            self.assertEqual(result.returncode, 77, result.stderr)
+            invocation = json.loads(log.read_text())
+            self.assertEqual(invocation["cwd"], str(fixtures))
+            self.assertEqual(invocation["args"][-1], "./library")
+            self.assertIn("exit_status=77", (out / "build-status.txt").read_text())
+            script = (ROOT / "scripts/build.sh").read_text()
+            self.assertNotIn('"$fixtures/library"', script)
+            self.assertNotIn('"$fixtures/hello"', script)
+
     def test_unsupported_architecture(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
