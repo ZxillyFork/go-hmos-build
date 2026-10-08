@@ -85,14 +85,26 @@ weaken tests.
 - Target DNS/network-id behavior, certificate-service integration, system
   timezone-parameter synchronization, application permissions/signing,
   foreground/background lifecycle, and memory-pressure stress: **not verified**.
-- AMD64 TLS pseudo-instruction's interior PUSH/CALL/POP lacks independently
-  represented PCSP metadata. Existing host tests are not an asynchronous
-  unwind proof. See the [core platform document](https://github.com/ZxillyFork/go-hmos/blob/fcaf70eef17b74d6acb8fd220d80edab8fdf3799/doc/openharmony.md)
-  for this and runtime restrictions.
+- Actual target asynchronous unwinding remains unverified. The earlier
+  `fcaf70e` TLS expansion lacked independently represented AMD64 PCSP metadata;
+  the reviewed source now adds explicit metadata and unsafe-point regressions.
+  Compiler-table tests are not proof of device runtime behavior. See the
+  [current platform document](https://github.com/ZxillyFork/go-hmos/blob/50a9db343e53ec569374c328998b3ffbada8f850/doc/openharmony.md).
 
 ## Current source pin
 
-The default source is
+The reviewed source is
+[`50a9db343e53ec569374c328998b3ffbada8f850`](https://github.com/ZxillyFork/go-hmos/commit/50a9db343e53ec569374c328998b3ffbada8f850).
+The build repository is repinned to this exact source. Host checks now include
+`cmd/internal/buildid`, alongside `cmd/internal/obj/arm64` and
+`cmd/internal/obj/x86`, so the ELF-note, ARM64 TLS macro/stack, and AMD64
+PCSP/unsafe-point regressions are included. Host and SDK runs for this source
+are pending; the older successful SDK run below is not a result for this new
+revision. Device execution is still not performed.
+
+## Earlier independent-GOOS source
+
+The earlier source was
 [`fcaf70eef17b74d6acb8fd220d80edab8fdf3799`](https://github.com/ZxillyFork/go-hmos/commit/fcaf70eef17b74d6acb8fd220d80edab8fdf3799),
 published with the independent `runtime.GOOS = "openharmony"` implementation.
 The core no longer exports `runtime.IsOpenharmony`. Historical simulations above
@@ -107,8 +119,9 @@ compiler probes also passed. The verified SDK archive digest was
 Both architecture builds then failed before Go fixture compilation because the
 wrapper supplied an absolute package directory in GOPATH mode. The wrapper now
 builds `./library` and `./hello` from the fixture directory; a regression test
-covers the actual working directory, arguments, and failure exit status. The corrected run below subsequently established SDK cross-linking for this
-same source revision. Device execution is still not performed.
+covers the actual working directory, arguments, and failure exit status. The
+corrected run below subsequently established SDK cross-linking for this same
+source revision. Device execution is still not performed.
 
 ## Passed with the official SDK on GitHub
 
@@ -155,7 +168,8 @@ workflow or installer to the Go core tree. Locally passed:
 - Twelve offline Python regression tests covering full-SHA input validation,
   compiler symlink discovery through real tar/zip extraction, checksum mismatch,
   invalid checksum responses, missing compilers, overwrite refusal, and missing
-  SDK/unsupported-architecture rejection, valid job-level workflow contexts, and relative fixture import paths with preserved failure status.
+  SDK/unsupported-architecture rejection, valid job-level workflow contexts,
+  and relative fixture import paths with preserved failure status.
 - YAML parse, workflow structure inspection, and actionlint v1.7.7 validation.
 - The complete `scripts/test-host.sh` run against the locally rebuilt
   cleanup/cache-fix worktree passed, including all three compiler build-ID
@@ -167,8 +181,9 @@ workflow or installer to the Go core tree. Locally passed:
   CI runs this regression after actually bootstrapping into that cache.
 
 These offline tests are script checks, not SDK compilation. The separate real
-SDK result is recorded below. The workflow records both architecture outcomes
-independently and retains available diagnostics even when one fails. Each run records the exact core SHA,
+SDK results are recorded above. The workflow records both architecture outcomes
+independently and retains available diagnostics even when one fails. Each run
+records the exact core SHA,
 SDK URL, downloaded official checksum, compiler version, ELF evidence, and a
 compile-only scope marker. The SDK checksum is obtained from the official
 server during the run; it is not a historical digest pinned in this repository.

@@ -19,7 +19,7 @@ done
 # populated bootstrap cache, rather than relying only on isolated CI caches.
 GOCACHE="$cache_root/bootstrap" go test internal/platform
 go test internal/platform internal/buildcfg go/build cmd/go/internal/imports \
-  cmd/go/internal/modindex cmd/go/internal/cfg cmd/internal/obj \
+  cmd/go/internal/modindex cmd/go/internal/cfg cmd/internal/buildid cmd/internal/obj \
   cmd/internal/obj/arm64 cmd/internal/obj/x86 cmd/internal/objabi
 go test cmd/api -run '^TestCheck$' -check
 go test cmd/go -run '^TestScript/build_openharmony$'

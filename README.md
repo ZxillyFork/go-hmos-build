@@ -8,18 +8,18 @@ Go 核心仓库只保留移植代码、测试和平台文档；GitHub Actions、
 **移植仍是实验性的。交叉编译成功不代表已在 OpenHarmony 或 HarmonyOS NEXT
 设备上运行。** 当前已完成和未完成的验证分别记录在 [VALIDATION.md](VALIDATION.md)。
 目标平台限制见核心仓库的
-[平台说明](https://github.com/ZxillyFork/go-hmos/blob/fcaf70eef17b74d6acb8fd220d80edab8fdf3799/doc/openharmony.md)。
+[平台说明](https://github.com/ZxillyFork/go-hmos/blob/50a9db343e53ec569374c328998b3ffbada8f850/doc/openharmony.md)。
 
 ## 当前源代码固定状态
 
-默认核心提交为 [fcaf70eef17b](https://github.com/ZxillyFork/go-hmos/commit/fcaf70eef17b74d6acb8fd220d80edab8fdf3799)，
-其中 `runtime.GOOS` 和 `go env GOOS` 均以 `openharmony` 作为独立系统身份。
-该提交已通过 Linux host/API/codegen 检查，以及官方 OpenHarmony 6.1 SDK 的
-ARM64、AMD64 真实编译/链接/ELF 检查，见
-[通过的验证运行](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37813650175)。
-这没有执行目标二进制，不能作为真机运行或完整标准库测试通过的证明。
+默认核心提交为 [50a9db343e53](https://github.com/ZxillyFork/go-hmos/commit/50a9db343e53ec569374c328998b3ffbada8f850)，
+包含两轮 review 后的 TLS、栈元数据和 ELF note 清理，并使用独立的
+`runtime.GOOS = "openharmony"` 身份。此精确提交的 host/SDK 检查正在重新执行。
+
+先前的 `fcaf70e` 已通过官方 SDK 的 ARM64、AMD64 编译/链接/ELF 检查，但该结果
+不替代新提交的验证。所有 SDK 检查都只编译和检查文件，没有执行目标二进制。
 默认推送运行 host 检查；真实 SDK 检查仍需手动选择 `sdk=true`。
-[VALIDATION.md](VALIDATION.md) 记录精确提交、工件和未验证项目。
+[VALIDATION.md](VALIDATION.md) 按精确提交记录结果和未验证项目。
 
 ## GitHub Actions
 
