@@ -1,4 +1,4 @@
-# Validation record — 2026-10-08
+# Validation record — 2026-10-09
 
 This record distinguishes compilation, Linux-host ABI simulation, and real
 OpenHarmony execution. **No OpenHarmony SDK-linked binary or actual device has
@@ -6,6 +6,44 @@ been executed for this change.** The port remains experimental and the core PR i
 contains build automation only; historical core results below do not establish
 validation for a different source revision. Exact GitHub SDK results are
 recorded below.
+
+## Go 1.27.2 update: verification in progress
+
+The new default core is
+[`b637b8617624655906b737977f50de5280bf7f65`](https://github.com/ZxillyFork/go-hmos/commit/b637b8617624655906b737977f50de5280bf7f65),
+a non-rewriting merge of upstream Go 1.27.2
+[`022c8636110ebac86a9b88724cda168ed713c21f`](https://github.com/golang/go/commit/022c8636110ebac86a9b88724cda168ed713c21f)
+into the previously reviewed port. The version is `go1.27.2-hmos-devel`.
+The previous core and the upstream release are both ancestors of the new pin;
+all prior port changes are retained. No build automation or installer was
+added to the core repository.
+
+Relative to upstream base `68fa7699a27d745f90bf8630202e1a415d1b0769`, this
+imports ten security-fix commits plus the release-version commit:
+CVE-2026-56857, CVE-2026-56866, CVE-2026-78659, CVE-2026-78663,
+CVE-2026-78667, CVE-2026-78669, CVE-2026-94439, CVE-2026-94440,
+CVE-2026-97031, and CVE-2026-97032. The other Go 1.27.2 changes were already
+present in that previous upstream base.
+
+The bootstrap is updated to official Go 1.27.2. The Linux/amd64 archive was
+verified against the official SHA-256
+`ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5`.
+This revision adds full host-package tests for `crypto/tls`, `net/textproto`,
+`mime/multipart`, `net/http`, `net/http/httputil`, and `net/http/internal/http2`,
+selected `os.Root` regressions, and a race-enabled
+`TestServer_HeaderTableSizeDuringWrite`. The separate installer executes the
+installed fork's selected `os.Root` regressions on Linux, macOS, and Windows;
+Windows must report explicit passes for dangling-junction mkdir cases.
+Linux and cross-compilation cannot establish Windows junction behavior.
+These checks do not claim a complexity benchmark for HTTP/2 SETTINGS handling.
+
+Current validation is pending. Do not attribute the successful historical
+runs below to this revision. Exact-source host, SDK, installer-matrix results,
+and remaining limitations will be recorded here when established.
+
+## Historical Go 1.27.1 results
+
+The sections below preserve the earlier evidence and its exact source hashes.
 
 ## Passed locally
 
@@ -92,7 +130,7 @@ weaken tests.
   remain unverified; host/compiler checks do not prove those behaviors. See the
   [current platform document](https://github.com/ZxillyFork/go-hmos/blob/50a9db343e53ec569374c328998b3ffbada8f850/doc/openharmony.md).
 
-## Current source pin: reviewed revision passed
+## Previous source pin: reviewed revision passed
 
 Core commit
 [`50a9db343e53ec569374c328998b3ffbada8f850`](https://github.com/ZxillyFork/go-hmos/commit/50a9db343e53ec569374c328998b3ffbada8f850)

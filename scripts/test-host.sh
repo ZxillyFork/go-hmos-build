@@ -23,6 +23,14 @@ go test internal/platform internal/buildcfg go/build cmd/go/internal/imports \
   cmd/internal/obj/arm64 cmd/internal/obj/x86 cmd/internal/objabi
 go test cmd/api -run '^TestCheck$' -check
 go test cmd/go -run '^TestScript/build_openharmony$'
+# Exercise the upstream Go 1.27.2 security fixes with the rebuilt fork.
+# Windows junction handling also requires the installer CI's native Windows run.
+go test -count=1 -timeout=10m crypto/tls net/textproto net/http \
+  net/http/httputil net/http/internal/http2 mime/multipart
+go test -count=1 -timeout=10m os \
+  -run '^TestRootMulti(Mkdir|MkdirAllShallow|MkdirAllDeep|Lstat|Open|OpenFile|Stat|ReadFile|Readlink)$'
+CGO_ENABLED=1 go test -race -count=1 -timeout=5m net/http/internal/http2 \
+  -run '^TestServer_HeaderTableSizeDuringWrite$'
 for arch in arm64 amd64; do
   # The runtime package itself has Go and assembly sources. This step does not
   # compile runtime/cgo, link the SDK C library, or execute a target binary.

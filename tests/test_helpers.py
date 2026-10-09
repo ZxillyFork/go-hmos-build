@@ -33,7 +33,7 @@ class SourcePinTest(unittest.TestCase):
         self.assertEqual(result.stdout.strip(), "a" * 40)
 
     def test_moving_or_malformed_refs_rejected(self):
-        for revision in ("main", "v1.27.1", "a" * 39, "A" * 40, "0" * 40,
+        for revision in ("main", "v1.27.2", "a" * 39, "A" * 40, "0" * 40,
                          "a" * 40 + "\ncore_sha=main"):
             with self.subTest(revision=revision):
                 self.assertNotEqual(run("source-pin.py", args=("--revision", revision)).returncode, 0)
@@ -41,7 +41,7 @@ class SourcePinTest(unittest.TestCase):
     def test_manifest_repository_and_bootstrap(self):
         manifest = json.loads((ROOT / "source.json").read_text())
         self.assertEqual(manifest["repository"], "ZxillyFork/go-hmos")
-        self.assertEqual(manifest["bootstrap_version"], "1.27.1")
+        self.assertEqual(manifest["bootstrap_version"], "1.27.2")
 
 
 class SDKDownloadTest(unittest.TestCase):
@@ -159,7 +159,7 @@ class BuildPreconditionTest(unittest.TestCase):
             root = Path(directory)
             (root / "src").mkdir()
             (root / "src/make.bash").touch()
-            (root / "VERSION").write_text("go1.27.1-hmos-devel\n")
+            (root / "VERSION").write_text("go1.27.2-hmos-devel\n")
             fixtures = root / "src/cmd/cgo/internal/testcshared/testdata/openharmony"
             for name in ("library/main.go", "hello/main.go", "loader.c"):
                 target = fixtures / name
@@ -204,7 +204,7 @@ class BuildPreconditionTest(unittest.TestCase):
             root = Path(directory)
             (root / "src").mkdir()
             (root / "src/make.bash").touch()
-            (root / "VERSION").write_text("go1.27.1-hmos-devel\n")
+            (root / "VERSION").write_text("go1.27.2-hmos-devel\n")
             result = run("build.sh", env={"OHOS_NDK_HOME": directory,
                          "GO_SOURCE_ROOT": directory, "GOARCH": "riscv64",
                          "GO_HMOS_CACHE_ROOT": str(root / "cache")})

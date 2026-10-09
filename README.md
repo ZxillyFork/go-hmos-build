@@ -8,21 +8,20 @@ Go 核心仓库只保留移植代码、测试和平台文档；GitHub Actions、
 **移植仍是实验性的。交叉编译成功不代表已在 OpenHarmony 或 HarmonyOS NEXT
 设备上运行。** 当前已完成和未完成的验证分别记录在 [VALIDATION.md](VALIDATION.md)。
 目标平台限制见核心仓库的
-[平台说明](https://github.com/ZxillyFork/go-hmos/blob/50a9db343e53ec569374c328998b3ffbada8f850/doc/openharmony.md)。
+[平台说明](https://github.com/ZxillyFork/go-hmos/blob/b637b8617624655906b737977f50de5280bf7f65/doc/openharmony.md)。
 
 ## 当前源代码固定状态
 
-默认核心提交为 [50a9db343e53](https://github.com/ZxillyFork/go-hmos/commit/50a9db343e53ec569374c328998b3ffbada8f850)，
-包含两轮 review 后的 TLS、栈元数据和 ELF note 清理，并使用独立的
-`runtime.GOOS = "openharmony"` 身份。
+默认核心提交为 [b637b8617624](https://github.com/ZxillyFork/go-hmos/commit/b637b8617624655906b737977f50de5280bf7f65)，
+基于官方 Go 1.27.2，保留前两轮 review 后的 OpenHarmony、TLS、栈元数据和
+ELF note 修复，并使用独立的 `runtime.GOOS = "openharmony"` 身份。
+工具版本为 `go1.27.2-hmos-devel`，保留独立的内容 build ID。
 
-该精确提交的主机回归和官方 OpenHarmony 6.1 SDK 的 ARM64、AMD64
-编译/链接/ELF 检查均已通过，见
-[最终验证运行](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37819269863)。
-标准库测试二进制和原生 Go 工具也已交叉编译，但**没有在目标设备执行**；
-这些结果不能证明真机运行、完整标准库测试或自举通过。
-默认推送运行 host 检查；真实 SDK 检查仍需手动选择 `sdk=true`。
-[VALIDATION.md](VALIDATION.md) 按精确提交记录结果、工件和未验证项目。
+本次导入旧上游基线之后的全部 10 项安全修复，并新增对应的主机回归、
+HTTP/2 race 检查和安装器原生 Windows junction 回归。
+该精确提交的当前验证状态见 [VALIDATION.md](VALIDATION.md)；旧版本的成功
+结果不适用于此提交。SDK 编译/链接/ELF 检查也**不等于目标设备执行**。
+默认推送运行 host 检查；真实 SDK 检查需手动选择 `sdk=true`。
 
 ## GitHub Actions
 
@@ -31,7 +30,7 @@ Go 核心仓库只保留移植代码、测试和平台文档；GitHub Actions、
 
 - 推送或拉取请求：离线脚本测试、Linux/amd64 三阶段工具链 bootstrap、构建标签、
   ARM64/AMD64 TLS 代码生成、Go API、命令驱动测试，以及两个目标的 runtime
-  Go/汇编编译。
+  Go/汇编编译；另执行 Go 1.27.2 相关安全回归及 HTTP/2 race 检查。
 - 手动运行并选择 `sdk=true`：另外下载官方公开 OpenHarmony 6.1 SDK，校验官方
   SHA-256，使用真实 SDK 对 ARM64 和 AMD64 编译、外部链接并检查 ELF。
   下载约 2.3 GB，需要额外解压空间。这个检查不会启动设备或模拟器。
@@ -45,14 +44,14 @@ Go 核心仓库只保留移植代码、测试和平台文档；GitHub Actions、
 审查其代码；构建源代码本身会执行该提交中的程序。
 
 工作流仅请求 `contents: read`，checkout 不保留凭据，不创建令牌、不发布 release，
-也不修改核心仓库。Actions 固定到已核验的具体提交。工具链使用官方 Go 1.27.1
+也不修改核心仓库。Actions 固定到已核验的具体提交。工具链使用官方 Go 1.27.2
 bootstrap，关闭 setup-go 构建缓存；bootstrap、host test、每个 SDK 架构分别使用
 不同的 GOCACHE。host 检查同时验证 fork 的开发版 build ID，并回归测试与上游
 bootstrap 共用缓存的情况。
 
 ## 本地复现
 
-需要 Linux/amd64、Bash、Python 3、Git、官方 Go 1.27.1，以及本机 C 编译器。
+需要 Linux/amd64、Bash、Python 3、Git、官方 Go 1.27.2，以及本机 C 编译器。
 SDK 检查还需要 curl、GNU tar、unzip 和 sha256sum。脚本不负责安装软件或接受
 SDK 的点击确认条款；使用前请阅读 SDK 随附许可。
 
