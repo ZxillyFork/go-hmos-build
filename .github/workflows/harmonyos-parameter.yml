@@ -2,7 +2,7 @@ name: HarmonyOS parameter diagnostics
 
 on:
   push:
-    branches: [ci/harmonyos-amd64]
+    branches: [zxilly/openharmony-system-config]
     paths-ignore:
       - '.github/workflows/harmonyos-app-network.yml'
       - 'scripts/app/**'
