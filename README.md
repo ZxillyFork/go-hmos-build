@@ -7,6 +7,11 @@ Go 核心仓库只保留移植代码、测试和平台文档；GitHub Actions、
 
 **移植仍是实验性的。交叉编译成功不代表已在 OpenHarmony 或 HarmonyOS NEXT
 设备上运行。** 当前已完成和未完成的验证分别记录在 [VALIDATION.md](VALIDATION.md)。
+官方 x64 模拟器已实际运行 Go hello、runtime/GC/线程/timer、crypto/TLS、cgo
+与两种 dlopen 隔离测试；18 个标准库包的 130 个顶层用例通过，1 个显式 short-mode
+跳过。完整 CI 仍因 HDC shell 的网络限制失败，同操作原生 C 对照也被拒绝。
+这不等于应用上下文网络已验证。见[模拟器实测记录](VALIDATION.md#official-x64-emulator-runtime-validation)。
+
 目标平台限制见核心仓库的
 [平台说明](https://github.com/ZxillyFork/go-hmos/blob/b637b8617624655906b737977f50de5280bf7f65/doc/openharmony.md)。
 

@@ -1,11 +1,145 @@
 # Validation record — 2026-10-09
 
 This record distinguishes compilation, Linux-host ABI simulation, and real
-OpenHarmony execution. **No OpenHarmony SDK-linked binary or actual device has
-been executed for this change.** The port remains experimental and the core PR is a draft. This repository
-contains build automation only; historical core results below do not establish
-validation for a different source revision. Exact GitHub SDK results are
-recorded below.
+OpenHarmony execution. The official x64 emulator has now executed the pinned
+Go runtime and focused tests. **The full emulator workflow remains failing:
+network checks are denied in the HDC shell context.** The port remains
+experimental; this is not physical-device certification, a complete Go test
+suite, or validation of networking in an application context. Historical
+results below apply only to their stated exact source revisions.
+
+
+## Official x64 emulator runtime validation
+
+**Result: the experimental Go runtime and native-library ABI execute on the
+official x64 emulator. The complete workflow is not green: network operations
+are restricted in its HDC shell context. ARM was not tested.**
+
+The final same-operation C/Go comparison is
+[run 37884563219](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37884563219),
+which completed with `failure` at the mandatory network checks. Its exact
+executable test code is build commit
+[`efa924f1b10e55cc26d8026a6768a2b3130e0336`](https://github.com/ZxillyFork/go-hmos-build/commit/efa924f1b10e55cc26d8026a6768a2b3130e0336),
+using unchanged core
+[`b637b8617624655906b737977f50de5280bf7f65`](https://github.com/ZxillyFork/go-hmos/commit/b637b8617624655906b737977f50de5280bf7f65).
+The later documentation-only commit does not alter this tested code and skips
+CI to avoid repeating known shell-policy failures.
+
+### Environment and provenance
+
+- GitHub-hosted Ubuntu 24.04 x64; real KVM API 12 and `KVM_CREATE_VM` succeeded.
+  The test process runs as the runner user with a temporary KVM group; no
+  device ACL, group membership, SELinux, or other system-policy changes.
+- Official Huawei Command Line Tools 26.0.0.821, archive SHA-256
+  `58da7359019e9360a8bb82da0cd1d3b3b26fedc338379f257849f2162e3ac1fc`.
+  The exact package and all four emitted agreement texts were compared with
+  the previously accepted [cjv run 37875586125](https://github.com/Zxilly/cjv/actions/runs/37875586125).
+  Source and agreement hashes are in `scripts/emulator/`; no new or changed
+  terms are accepted automatically.
+- Official CLI-installed HarmonyOS 6.1.1 (API 24) PC image; the guest reports
+  `OpenHarmony-6.1.1.125`, API `24`, `x86_64`, Linux `5.10.210`.
+  `system.img` is 3,250,585,600 bytes, SHA-256
+  `12dfd14d80234783750a14d7768bc73daed4f5d17e77152a2e00f70523dbec15`.
+- Compilation uses the separate public OpenHarmony 6.1/API 23 SDK. Its official
+  downloaded archive checksum is
+  `b833b75a64ee46bbd7880921abbb49b733ec5c8171b6684c9b524d57f624cee0`.
+  The compiler target, sysroot, ELF machine, PIE type and interpreter are
+  checked before transfer. Compilation SDK and execution image are not
+  presented as the same distribution/version.
+- Guest execution is through HDC as UID/GID 2000 (`shell`), SELinux context
+  `u:r:sh:s0`. Per-file hashes and randomized guest exit markers prevent an
+  HDC zero exit status from being mistaken for a successful guest command.
+
+### Actually executed and passed
+
+- Plain SDK C loader/libc/pthread create/join probe and actual Go hello:
+  `openharmony/amd64 (runtime.GOOS=openharmony)`.
+- Goroutines, channels, atomics, allocations/GC, stack growth, recoverable nil
+  faults, timers, locked OS threads, and temporary-file operations.
+- Random bytes/SHA-256 and authenticated TLS 1.2 and 1.3 over in-memory
+  `net.Pipe`. This TLS check does not establish TCP networking or system roots.
+- Cgo calls, C thread-local storage isolation, and 128 Go callbacks from four
+  foreign pthreads.
+- Both ordinary and `netgo` Go shared libraries loaded with `dlopen`. The
+  explicitly isolated `--no-network` runs each pass 100 foreign-pthread
+  callbacks, environment access, GC, goroutines, timers, panic recovery and
+  reserved-signal-handler preservation. The full network-enabled runs are
+  also executed and remain failing; their outcomes are not replaced by the
+  isolated results.
+- 18 standard-library packages: **130 selected top-level tests passed**, zero
+  missing selections, and **one explicit skip**,
+  `compress/flate.TestDeflateInflateString` (upstream skips it in `-test.short`
+  mode). The exact 131 selections are in `testdata/emulator/stdlib-tests.tsv`.
+  This includes port-policy/fault tests, heap profiling and the expected
+  rejection of unsupported CPU profiling; it is not full profiling support.
+- Simulator log collection and stop completed successfully. Logs and test
+  payloads are attached to the run; SDK/CLI/system images are not uploaded.
+
+### Network failures and the native C control
+
+The native probe uses the same SDK libc and the same HDC shell identity:
+
+- TCP loopback bind: native C returns `errno=13` (`EACCES`), and Go reports
+  `bind: permission denied`.
+- Bare native UDP loopback bind succeeds. Go's UDP setup first enables
+  `SOL_SOCKET/SO_BROADCAST`, so bare bind was not a complete comparison.
+  The final native probe repeats Go's nonblocking/close-on-exec socket flags
+  and the same `SO_BROADCAST=1` option: **that C call also returns EACCES**.
+  Go reports `setsockopt: permission denied` at that operation.
+- Native `getifaddrs` returns EACCES, as do Go `net.Interfaces` and both shared
+  library variants. `netgo` still uses the port's libc interface-discovery
+  implementation; it is not a separate pure-Go enumeration control.
+
+These matched C/Go denials establish that the observed failures are not
+specific to Go's runtime or ABI implementation. They are a networking
+restriction of the tested shell execution context; the tests do not identify
+which exact security layer imposed every denial. The existing official
+[shell TCP policy](https://github.com/openharmony/security_selinux_adapter/blob/b8cc1cb5ab75f246b7ec0d8a5ef047b7c69e8c65/sepolicy/ohos_policy/liteos/toybox/public/sh.te)
+and [HDC shell policy](https://github.com/openharmony/security_selinux_adapter/blob/b8cc1cb5ab75f246b7ec0d8a5ef047b7c69e8c65/sepolicy/ohos_policy/developtools/hdc/system/sh.te)
+are consistent with restricted socket operations, but are not claimed to be
+an exact policy dump of this commercial emulator image.
+
+The workflow deliberately remains failing on these mandatory network checks.
+No core patch, permission expansion, privileged execution inside the guest,
+or policy relaxation was used to obtain a passing subset.
+
+### Remaining validation and next context
+
+Physical ARM devices, full Go/stdlib suites, native toolchain self-bootstrap,
+application lifecycle, signing/HAP/N-API integration, real application
+networking, DNS, system certificate policy and memory-pressure behavior remain
+unverified.
+
+A bounded next experiment would be a normal x64 debug HAP with only
+[`ohos.permission.INTERNET`](https://github.com/openharmony/docs/blob/master/en/application-dev/security/AccessToken/permissions-for-all.md#ohospermissioninternet)
+(normal, `system_grant`) declared in `module.json5`. A small
+[N-API wrapper](https://github.com/openharmony/docs/blob/master/en/application-dev/napi/use-napi-process.md)
+would load the existing Go shared library in the actual app process and repeat
+matched native C/Go network probes. An HDC shell launched from an app directory
+is not equivalent to that application context. INTERNET does **not** guarantee
+that every NETLINK_ROUTE operation or `getifaddrs` will be allowed.
+
+That app-context build/install/run has not been performed. The official
+emulator-debug signing route must be checked before deciding whether account
+credentials are needed; unsigned or arbitrary self-signed HAP acceptance is
+not assumed. Account-backed signing, new credentials/profiles or new legal
+terms are not implied by the completed shell test.
+
+### Harness validation and initial failures
+
+The final harness passed 56 local offline Python checks (52 runner/license
+checks plus four build-fixture checks), Bash syntax, Go formatting, host C
+syntax checks and actionlint. These are not target-execution evidence.
+
+Initial runs fixed a runner `sudo` invocation and a conservative license-view
+parser before target execution. One real image download reached 77.0% of
+2,352,917,078 bytes in 20 minutes without errors; its timeout was therefore
+raised to 40 minutes, with a 90-minute job limit and streamed progress. This
+was a download-stage timeout, not an emulator or Go failure. The first actual
+execution in [run 37882584125](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37882584125)
+and the first native network control in
+[run 37883765934](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37883765934)
+are retained separately from the final same-operation control above.
 
 ## Go 1.27.2: host and official SDK verified
 
