@@ -140,11 +140,12 @@ N-API 包装异步加载一个 Go c-shared 库；库中保留固定核心的原�
 另加 TCP/UDP loopback、相同 socket flags 的 bind / `SO_BROADCAST`、
 `getifaddrs` / `net.Interfaces` / 地址枚举对照。不会把 HDC shell 当作应用进程。
 
-已在 [run 37913592375](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37913592375)
+已在 [run 37916270628](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37916270628)
 真实构建并通过普通 `hdc install` 安装 unsigned debug HAP；无需新签名密钥或账户。
-`aa start` 报屏幕锁定（10106102），同时模拟器日志记录 host EGL 配置选择失败，
-截图/布局获取失败。**应用内 Go/C 网络检查尚未执行，不能报告通过或权限结论。**
-当前改用 Xvfb/Mesa 的正常窗口测试主机图形初始化，不调整 guest 安全策略。
+`aa start` 报屏幕锁定（10106102）。Xvfb/Mesa 已解决此前 host EGL 配置失败，
+但本次截图仍为纯黑、控件树未就绪，日志显示桌面还在初始化。
+**应用内 Go/C 网络检查尚未执行，不能报告通过或权限结论。**
+当前增加有界的只读 UI 就绪等待，不调整 guest 安全策略或注入按键。
 原有 shell 测试的失败仍保留。
 详细范围及后续精确提交结果见
 [应用进程验证记录](VALIDATION.md#normal-app-process-network-validation)。

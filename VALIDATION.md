@@ -58,7 +58,8 @@ their stage and errno, and never turn into a successful overall workflow.
   states that emulator debugging does not require signing configuration, and
   its [build profile documentation](https://developer.huawei.com/consumer/cn/doc/doccenter-deveco-studio/ide-hmos-hvigor-build-profile-app)
   defines omitted signingConfig as unsigned. Ordinary unsigned installation
-  succeeded on this exact API24 image in runs 37912008534 and 37913592375.
+  succeeded on this exact API24 image in runs 37912008534, 37913592375 and
+  37916270628.
 - An ordinary `hdc install` signature failure stops the experiment with its
   exact diagnostics. No account login, new signing key/profile, verifier bypass,
   SELinux change, additional app permission or guest root execution is used.
@@ -69,7 +70,7 @@ correctness, release signing, app-store readiness or full Go suite coverage.
 
 ### Executed app-harness stages
 
-The latest completed run is [37913592375](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37913592375),
+The headless diagnostic run is [37913592375](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37913592375),
 build revision `84500e6563cea5ef6d44141861d3969817387e1b`, overall **failure**.
 
 - Exact pinned Go core bootstrap, six host Go fixture tests, target Go/C
@@ -85,8 +86,19 @@ build revision `84500e6563cea5ef6d44141861d3969817387e1b`, overall **failure**.
   layout capture timed out/failed. No actual screenshot or UI tree was produced.
 - The engine's `qemu.log` first reports no GBM device, then surfaceless EGL 1.5,
   then `Failed to choose EGL config: 0x3000`. This is host graphics initialization
-  evidence; it does not prove a password or a Go failure. The normal-window
-  Xvfb/Mesa follow-up is a host-only recovery attempt, not yet a successful run.
+  evidence; it does not prove a password or a Go failure.
+
+The latest completed run is [37916270628](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37916270628),
+build revision `5cb80eb3c85314bc9132df5ecccad9903d4bb908`, overall **failure**.
+It again passed all build/validation/ordinary-install stages. The host-only
+Xvfb/Mesa change succeeded in initializing EGL 1.5, a matching EGL configuration
+and llvmpipe OpenGL contexts. Both guest screenshots were successfully captured,
+but visually inspected pixels were entirely black; widget-tree capture still
+failed, and `aa start` still returned 10106102. No app-network report exists.
+The final hilog shows SceneBoard creating desktop/dock/status-bar components
+during teardown. Waiting for BMS alone was insufficient for a normal UI cold boot.
+The next runner revision adds a bounded, read-only UI-readiness wait; no Power
+key, swipe, credential action or guest security change is introduced.
 
 Earlier app runs are retained: 37908631884 exposed an overly strict bare-API24
 validator assumption after successful packaging; 37910446087 attempted installation

@@ -86,6 +86,33 @@ class ReportTest(unittest.TestCase):
 
 
 class ServiceReadinessTest(unittest.TestCase):
+    def test_layout_requires_real_widget_not_empty_root(self):
+        for node in [{}, [], {'attributes':{'bounds':'[0,0][3120,2080]','type':''}},
+                     {'children':[]}, {'attributes':'invalid'}, 'error']:
+            self.assertFalse(runner.layout_has_widgets(node))
+        self.assertTrue(runner.layout_has_widgets({'children':[
+            {'attributes':{'bounds':'[0,0][100,50]','type':'Text'}}]}))
+
+    def test_ui_wait_is_read_only_and_retries_empty_layout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app=runner.AppRunner(directory,directory)
+            tree=Path(directory)/'layout.json'
+            tree.write_text(json.dumps({'children':[{'attributes':{'type':'Text','bounds':'[0,0][10,10]'}}]}))
+            with mock.patch.object(app,'capture_ui',side_effect=[{}, {'png':Path(directory)/'screen.png','json':tree}]) as capture, \
+                 mock.patch.object(runner.time,'sleep'), mock.patch.object(app,'shell') as shell:
+                app.wait_for_app_ui()
+                self.assertEqual(capture.call_count,2)
+                shell.assert_not_called()
+
+    def test_ui_wait_deadline_never_launches_or_injects(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app=runner.AppRunner(directory,directory)
+            with mock.patch.object(runner.time,'monotonic',side_effect=[0,301]), \
+                 mock.patch.object(app,'diagnose_app'), mock.patch.object(app,'shell') as shell:
+                with self.assertRaisesRegex(runner.Failure,'no input injected'):
+                    app.wait_for_app_ui()
+                shell.assert_not_called()
+
     def test_normal_app_uses_xcb_but_shell_default_stays_headless(self):
         with tempfile.TemporaryDirectory() as directory:
             app=runner.AppRunner(directory,directory)

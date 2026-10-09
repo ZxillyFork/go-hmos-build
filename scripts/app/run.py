@@ -81,6 +81,18 @@ def app_services_ready(text):
             re.search(r"^ID: [0-9]+:\r?\n\t[A-Za-z0-9_.]+\r?$", text, re.M) is not None)
 
 
+def layout_has_widgets(node):
+    """An empty root bounds rectangle is not a ready application/lock screen."""
+    if isinstance(node, list):
+        return any(layout_has_widgets(item) for item in node)
+    if not isinstance(node, dict):
+        return False
+    attributes = node.get("attributes", {})
+    if isinstance(attributes, dict) and attributes.get("type") and attributes.get("bounds"):
+        return True
+    return layout_has_widgets(node.get("children", []))
+
+
 class AppRunner(Runner):
     # The official engine's surfaceless fallback failed EGL config selection on
     # the CI runner. A normal window on Xvfb supplies host rendering, while all
@@ -93,6 +105,7 @@ class AppRunner(Runner):
             "bundles": "bm dump -a",
             "hilog-help": "hilog -h",
             "hilog": "hilog -z 400",
+            "power": "hidumper -s PowerManagerService -a -s",
         }
         for name, command in commands.items():
             try:
@@ -100,24 +113,55 @@ class AppRunner(Runner):
             except (Failure, OSError) as error:
                 self.record("app-diagnostic-error", probe=name, detail=str(error))
 
-    def capture_ui(self, prefix):
+    def capture_ui(self, prefix, deadline=None):
         # Read-only UI evidence before any future gesture: no key injection,
         # lock settings, developer-mode changes or authentication is performed.
+        captured = {}
         for action, suffix in (("screenCap", "png"), ("dumpLayout", "json")):
+            def remaining():
+                if deadline is None:
+                    return 30
+                value = min(30, deadline-time.monotonic())
+                if value <= 0:
+                    raise Failure("UI capture deadline expired")
+                return value
             guest = f"/data/local/tmp/{prefix}.{suffix}"
             target = self.logs / f"{prefix}.{suffix}"
             try:
                 self.shell(prefix + "-" + action,
                            f"uitest {action} -p {guest} && test -s {guest}",
-                           timeout=30)
+                           timeout=remaining())
                 self.run(prefix + "-recv-" + suffix,
                          [self.tools / "hdc", "-t", TARGET, "file", "recv", guest, target],
-                         timeout=30, env=self.env())
+                         timeout=remaining(), env=self.env())
                 if not target.is_file() or not target.stat().st_size:
                     raise Failure("UI evidence transfer produced no file")
                 self.record("app-ui-evidence", file=target.name, bytes=target.stat().st_size)
+                captured[suffix] = target
             except (Failure, OSError) as error:
                 self.record("app-ui-evidence-error", action=action, detail=str(error))
+        return captured
+
+    def wait_for_app_ui(self):
+        # BMS becomes ready before SceneBoard finishes its first cold start.
+        # In run 37916270628 it was still creating the dock/status bar when the
+        # old runner stopped. Read-only polling avoids treating that as a lock
+        # credential problem or blindly injecting Power on an already-on screen.
+        self.phase = "app-ui-readiness"
+        deadline = time.monotonic() + 300
+        attempt = 0
+        while time.monotonic() < deadline:
+            attempt += 1
+            files = self.capture_ui(f"app-ui-ready-{attempt}", deadline)
+            try:
+                if "png" in files and "json" in files and layout_has_widgets(json.loads(files["json"].read_text())):
+                    self.record("app-ui-ready", passed=True, attempts=attempt)
+                    return
+            except (OSError, ValueError) as error:
+                self.record("app-ui-parse-error", detail=str(error))
+            time.sleep(min(10, max(0, deadline-time.monotonic())))
+        self.diagnose_app("app-ui-not-ready")
+        raise Failure("no captured guest screenshot and nonempty widget tree within 300 seconds; no input injected")
 
     def wait_for_app_services(self):
         self.phase = "app-service-readiness"
@@ -156,7 +200,7 @@ class AppRunner(Runner):
             raise Failure("ordinary HAP install failed; inspect app-install.log and diagnostics; no signing/security workaround applied")
         self.shell("app-bundle", f"bm dump -n {BUNDLE}", check=False)
         self.shell("app-uitest-help", "uitest help", timeout=20, check=False)
-        self.capture_ui("app-before-launch")
+        self.wait_for_app_ui()
         token = secrets.token_hex(16)
         self.phase = "app-launch"
         status, start = self.shell("app-start", f"aa start -a EntryAbility -b {BUNDLE} -m entry --ps token {token}",
