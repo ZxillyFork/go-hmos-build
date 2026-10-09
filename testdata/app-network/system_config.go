@@ -43,6 +43,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"reflect"
 	"slices"
 	"sync"
@@ -55,8 +56,10 @@ func goSystemDNS() checkResult {
 	status := C.system_dns(&native)
 	var expected, got []string
 	for i := range native.servers {
-		if addr := C.GoString(&native.servers[i][0]); addr != "" {
-			expected = append(expected, net.JoinHostPort(addr, "53"))
+		// NetSys can use "*" for an unused slot. Musl also accepts only
+		// numeric addresses from this array.
+		if addr, err := netip.ParseAddr(C.GoString(&native.servers[i][0])); err == nil {
+			expected = append(expected, net.JoinHostPort(addr.String(), "53"))
 		}
 	}
 	var mu sync.Mutex

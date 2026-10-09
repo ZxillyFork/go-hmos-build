@@ -139,7 +139,9 @@ jobs:
           EXPECTED_SHA: ${{ steps.source.outputs.core_sha }}
         run: |
           [[ "$REUSE_RUN" =~ ^[0-9]+$ ]]
-          gh run download "$REUSE_RUN" --repo "$GITHUB_REPOSITORY" --pattern 'harmonyos-amd64-runtime-*' --dir reused
+          artifact_name="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$REUSE_RUN/artifacts" --jq '.artifacts[] | select(.name | startswith("harmonyos-amd64-runtime-")) | .name')"
+          test -n "$artifact_name"
+          gh run download "$REUSE_RUN" --repo "$GITHUB_REPOSITORY" --name "$artifact_name" --dir reused
           mv reused/openharmony-out openharmony-out
           test "$(cat openharmony-out/amd64/source-revision.txt)" = "$EXPECTED_SHA"
           printf 'Reused compiled payload from run %s at core %s.\n' "$REUSE_RUN" "$EXPECTED_SHA" >> "$GITHUB_STEP_SUMMARY"
