@@ -47,7 +47,7 @@ jobs:
         run: |
           # Give only this process the runner's existing kvm group. Do not alter
           # device modes, ACLs, group membership, or system security settings.
-          sudo -E setpriv --reuid="$(id -u)" --regid="$(getent group kvm | cut -d: -f3)" \
+          sudo -E env HOME="$HOME" USER="$USER" LOGNAME="$LOGNAME" setpriv --reuid="$(id -u)" --regid="$(getent group kvm | cut -d: -f3)" \
             --init-groups --inh-caps=-all --bounding-set=-all python3 scripts/emulator/run.py hardware
       - name: Install official emulator dependencies
         run: |
@@ -86,7 +86,7 @@ jobs:
           cp "$SDK_DOWNLOAD_DIR/sdk.sha256" "$SDK_DOWNLOAD_DIR/sdk-url.txt" openharmony-out/amd64/
       - name: Execute real Go runtime, ABI and standard library checks
         run: |
-          sudo -E setpriv --reuid="$(id -u)" --regid="$(getent group kvm | cut -d: -f3)" \
+          sudo -E env HOME="$HOME" USER="$USER" LOGNAME="$LOGNAME" setpriv --reuid="$(id -u)" --regid="$(getent group kvm | cut -d: -f3)" \
             --init-groups --inh-caps=-all --bounding-set=-all python3 scripts/emulator/run.py test
           printf 'PASS: actual HarmonyOS x64 emulator execution at core %s.\n' \
             "$(cat openharmony-out/amd64/source-revision.txt)" >> "$GITHUB_STEP_SUMMARY"

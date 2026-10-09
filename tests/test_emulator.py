@@ -56,6 +56,26 @@ class GuestStatusTest(unittest.TestCase):
                     runner.install()
                 self.assertNotIn("accept", repr(cli.call_args_list))
 
+    def test_cleanup_race_preserves_original_failure_and_phase(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runner = emulator.Runner(directory, directory)
+            process = mock.Mock()
+            process.poll.return_value = None
+
+            def failed_test(payload):
+                runner.phase = "cgo-and-abi"
+                raise emulator.Failure("original cgo failure")
+
+            with mock.patch.object(emulator.subprocess, "Popen", return_value=process), \
+                 mock.patch.object(runner, "run", return_value=(0, "")), \
+                 mock.patch.object(runner, "cli", return_value=(0, "")), \
+                 mock.patch.object(runner, "shell", return_value=(0, "x86_64\n")), \
+                 mock.patch.object(runner, "test", side_effect=failed_test), \
+                 mock.patch.object(emulator.os, "killpg", side_effect=ProcessLookupError("exited")):
+                with self.assertRaisesRegex(emulator.Failure, "original cgo failure"):
+                    runner.boot(directory)
+            self.assertEqual(runner.phase, "cgo-and-abi")
+
 
 if __name__ == "__main__":
     unittest.main()

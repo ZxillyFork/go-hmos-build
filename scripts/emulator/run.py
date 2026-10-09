@@ -305,28 +305,40 @@ class Runner:
         if "openharmony/amd64 (runtime.GOOS=openharmony)" not in hello:
             raise Failure("hello did not prove runtime.GOOS=openharmony/amd64")
         self.phase = "runtime"
-        self.shell("runtime-smoke", prefix + "./emulator-smoke")
+        failures = []
+        status, text = self.shell("runtime-smoke", prefix + "./emulator-smoke", check=False)
+        if status or "PASS: emulator-smoke" not in text:
+            failures.append("runtime-smoke")
         self.phase = "cgo-and-abi"
-        self.shell("cgo-smoke", prefix + "./emulator-cgo-smoke")
+        status, text = self.shell("cgo-smoke", prefix + "./emulator-cgo-smoke", check=False)
+        if status or "PASS: emulator-cgo-smoke" not in text:
+            failures.append("cgo-smoke")
         for lib in ("libgo_hmos_test.so", "libgo_hmos_netgo.so"):
-            _, text = self.shell("dlopen-" + lib, prefix + "./loader ./" + lib)
-            if "PASS: dlopen" not in text or "PASS: 100 interface-discovery calls" not in text:
-                raise Failure("dlopen loader did not report all requested checks")
+            status, text = self.shell("dlopen-" + lib, prefix + "./loader ./" + lib, check=False)
+            if status or "PASS: dlopen" not in text or "PASS: 100 interface-discovery calls" not in text:
+                failures.append("dlopen-" + lib)
         self.phase = "stdlib"
         for package, binary, pattern, seconds in rows:
-            _, text = self.shell("stdlib-" + package.replace("/", "_"), prefix +
-                                 shlex.join(["./" + binary, "-test.v", "-test.count=1",
+            status, text = self.shell("stdlib-" + package.replace("/", "_"), prefix +
+                                 shlex.join(["./" + binary, "-test.v", "-test.short", "-test.count=1",
                                              "-test.timeout=" + seconds + "s", "-test.run=" + pattern]),
-                                 timeout=int(seconds) + 30)
+                                 timeout=int(seconds) + 30, check=False)
+            invalid = bool(status)
             if not re.search(r"^=== RUN\s+Test", text, re.M) or not re.search(r"^PASS\r?$", text, re.M):
-                raise Failure(f"{package}: selected tests did not demonstrably run and pass")
+                invalid = True
             if "no tests to run" in text:
-                raise Failure(f"{package}: empty test selection")
+                invalid = True
             passed = re.findall(r"^--- PASS: (Test\w+)", text, re.M)
             skipped = re.findall(r"^--- SKIP: (Test\w+)", text, re.M)
-            self.record("stdlib-cases", package=package, passed=passed, skipped=skipped)
-            if not passed:
-                raise Failure(f"{package}: every selected test was skipped")
+            selected = set(re.findall(r"Test\w+", pattern))
+            started = set(re.findall(r"^=== RUN\s+(Test\w+)\s*$", text, re.M))
+            missing = sorted(selected - started)
+            self.record("stdlib-cases", package=package, passed=passed, skipped=skipped, missing=missing)
+            if invalid or not passed or missing:
+                failures.append(package)
+        if failures:
+            self.phase = "target-tests"
+            raise Failure("Target test groups failed: " + ", ".join(failures))
         self.phase = "complete"
         self.record("device-execution", passed=True, architecture="amd64",
                     scope="hello/runtime/cgo/dlopen/netgo/focused-stdlib; not the full Go suite")

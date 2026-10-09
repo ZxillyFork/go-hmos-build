@@ -126,5 +126,91 @@ class LicenseComparisonTest(unittest.TestCase):
             self.assertEqual(list(root.iterdir()), [path])
 
 
+class LocalResourceTest(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        (self.root / "agreement").mkdir()
+        self.resources = []
+        for relative, documents in (
+            ("agreement/HarmonyOS_Software_Service_Agreement.txt", DOCUMENTS[:3]),
+            ("agreement/HarmonyOS_SDK_Agreement.txt", DOCUMENTS[3:]),
+        ):
+            data = ("\n" + licenses.SEPARATOR + "\n").join(documents).encode()
+            (self.root / relative).write_bytes(data)
+            self.resources.append((relative, len(data), hashlib.sha256(data).hexdigest()))
+        for name, value in (("EXPECTED_RESOURCES", tuple(self.resources)),
+                            ("EXPECTED_AGREEMENTS", EXPECTED)):
+            patch = mock.patch.object(licenses, name, value)
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def test_exact_abort_banner_and_complete_files_pass(self):
+        licenses.verify(self.root, licenses.ABORTED_VIEW)
+
+    def test_changed_count_or_banner_rejected(self):
+        for banner in (licenses.ABORTED_VIEW.replace("2 license", "3 license"),
+                       licenses.ABORTED_VIEW + "New terms apply.\n", ""):
+            with self.subTest(banner=banner), self.assertRaises(ValueError):
+                licenses.verify(self.root, banner)
+
+    def test_missing_file_rejected(self):
+        (self.root / self.resources[0][0]).unlink()
+        with self.assertRaisesRegex(ValueError, "inventory differs"):
+            licenses.verify(self.root, licenses.ABORTED_VIEW)
+
+    def test_extra_file_with_arbitrary_name_rejected(self):
+        (self.root / "agreement/extra.txt").write_text("New obligations")
+        with self.assertRaisesRegex(ValueError, "inventory differs"):
+            licenses.verify(self.root, licenses.ABORTED_VIEW)
+
+    def test_extra_resource_outside_directory_rejected(self):
+        (self.root / "new-license.txt").write_text("New obligations")
+        with self.assertRaisesRegex(ValueError, "inventory differs"):
+            licenses.verify(self.root, licenses.ABORTED_VIEW)
+
+    def test_file_symlink_rejected(self):
+        path = self.root / self.resources[0][0]
+        path.rename(self.root / "target.txt")
+        path.symlink_to(self.root / "target.txt")
+        with self.assertRaisesRegex(ValueError, "not a regular file"):
+            licenses.verify(self.root, licenses.ABORTED_VIEW)
+
+    def test_directory_symlink_rejected(self):
+        path = self.root / "agreement"
+        path.rename(self.root / "target")
+        path.symlink_to(self.root / "target", target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, "directory is missing or a symlink"):
+            licenses.verify(self.root, licenses.ABORTED_VIEW)
+
+    def test_same_size_changed_content_rejected(self):
+        path = self.root / self.resources[0][0]
+        path.write_bytes(path.read_bytes().replace(b"Synthetic", b"DIFFERENT"))
+        with self.assertRaisesRegex(ValueError, "SHA-256 differs"):
+            licenses.verify(self.root, licenses.ABORTED_VIEW)
+
+    def test_changed_size_rejected(self):
+        path = self.root / self.resources[0][0]
+        path.write_bytes(path.read_bytes() + b"new clause")
+        with self.assertRaisesRegex(ValueError, "size differs"):
+            licenses.verify(self.root, licenses.ABORTED_VIEW)
+
+    def test_raw_file_hash_is_not_enough_without_text_match(self):
+        with mock.patch.object(licenses, "EXPECTED_AGREEMENTS", EXPECTED[:3]):
+            with self.assertRaisesRegex(ValueError, "expected 3, found 4"):
+                licenses.verify(self.root, licenses.ABORTED_VIEW)
+
+    def test_unknown_preamble_is_not_discarded(self):
+        with self.assertRaisesRegex(ValueError, "preamble"):
+            licenses._frame_resource_text(["New terms\n" + DOCUMENTS[0]])
+
+    def test_resource_wrapper_conversion_matches_reference_format(self):
+        pieces = ["1/3:\n" + licenses.SEPARATOR + "\n" + DOCUMENTS[0] + "\n2/3:\n",
+                  licenses.SEPARATOR + "\n" + DOCUMENTS[1] + "\n3/3:\n",
+                  licenses.SEPARATOR + "\n" + DOCUMENTS[2], DOCUMENTS[3]]
+        licenses._compare(licenses._frame_resource_text(pieces), EXPECTED)
+
+
 if __name__ == "__main__":
     unittest.main()

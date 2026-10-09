@@ -44,7 +44,7 @@ build status explicitly says device execution was not performed.
 The runner must check exit status, require the exact smoke success marker, and
 run every manifest row with `-test.v -test.short -test.count=1`, the exact
 `-test.run` selection, and `-test.timeout=<seconds>s`. It must fail on empty test
-selections, absent success output, or unexpected skips. A host compile or test
+selections, absent success output, or all-skipped groups, and record individual skips. A host compile or test
 pass cannot be reported as an emulator pass.
 
 ## Host-only fixture checks
