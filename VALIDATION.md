@@ -40,9 +40,33 @@ Windows must report explicit passes for dangling-junction mkdir cases.
 Linux and cross-compilation cannot establish Windows junction behavior.
 These checks do not claim a complexity benchmark for HTTP/2 SETTINGS handling.
 
-Current validation is pending. Do not attribute the successful historical
-runs below to this revision. Exact-source host, SDK, installer-matrix results,
-and remaining limitations will be recorded here when established.
+Local checks on the new exact core revision passed:
+
+- Complete Linux/amd64 three-stage bootstrap, distinct compile/asm/link build
+  IDs, shared-bootstrap-cache regression, platform/build-tag/codegen tests,
+  API compatibility, and the OpenHarmony command-driver test.
+- Full `net/textproto`, `net/http`, `net/http/httputil`,
+  `net/http/internal/http2`, and `mime/multipart` suites.
+- All seven ECH outer-extension cases, selected `os.Root` regressions,
+  race-enabled HTTP/2 header-table update regression, and ARM64/AMD64 runtime
+  Go/assembly compilation.
+- Actual Linux installation into a path with spaces, cached reinstall,
+  exact version, host smoke, installed-fork `os.Root` regressions, and launcher
+  behavior. Installer unit tests and vet also passed with both official
+  Go 1.27.2 and the minimum Go 1.24.6.
+- Thirteen offline helper tests, Bash syntax, YAML parsing, actionlint v1.7.7,
+  and independent review of the merge, branch ancestry, pins, and test harness.
+
+The local full `crypto/tls` suite failed only `TestVerifyHostname` and
+`TestRealResumption`: direct DNS for their external google/yahoo connections
+is blocked by this environment. These tests remain enabled for CI; the local
+suite is not recorded as a complete pass. The local official SDK checksum
+request returned a 195-byte invalid response, so no substitute SDK was used.
+
+Exact-source GitHub host/SDK and installer-matrix validation is pending.
+Do not attribute the successful historical runs below to this revision.
+Native Windows execution, SDK linking, and all device-runtime limitations
+still require their own evidence.
 
 ## Historical Go 1.27.1 results
 
