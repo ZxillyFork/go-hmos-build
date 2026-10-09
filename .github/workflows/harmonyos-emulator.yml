@@ -127,7 +127,7 @@ jobs:
               _, output = self.shell("dlopen", prefix + "./loader ./libgo_hmos_test.so --no-network")
               if "PASS: dlopen" not in output:
                   raise run.Failure("c-shared callbacks failed")
-              self.record("preemption-pass", core="47aa1adf2313bafab842ce7efdcc2eb7f1ce5cfd")
+              self.record("preemption-pass", core="4134e2602366a075600a1f24c86ee6677ad40c3b")
 
           run.Runner.test = check
           run.Runner(os.environ["EMULATOR_ROOT"], "emulator-diagnostics").boot("openharmony-out/amd64")
