@@ -20,6 +20,7 @@ REQUIRED = {
     "go.raw_udp_broadcast", "native.tcp_roundtrip", "go.tcp_roundtrip",
     "native.udp_roundtrip", "go.udp_roundtrip", "native.getifaddrs",
     "go.net_interfaces", "interfaces.addresses_match",
+    "go.system_dns", "go.system_timezone", "go.system_trust",
 }
 
 
@@ -49,7 +50,7 @@ def extract_report(text, token):
 
 
 def validate_report(report):
-    if report.get("schema_version") != 1 or report.get("core_revision") != "b637b8617624655906b737977f50de5280bf7f65":
+    if report.get("schema_version") != 1 or report.get("core_revision") != "129dd94577dbfc130e921acd417d551e5586e82a":
         raise Failure("unexpected app schema or core revision")
     identity = report.get("identity", {})
     if identity.get("goos") != "openharmony" or identity.get("goarch") != "amd64":

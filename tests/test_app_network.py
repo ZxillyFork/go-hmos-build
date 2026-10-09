@@ -25,7 +25,7 @@ TOKEN = 'a' * 32
 
 def good():
     identity = {'goos': 'openharmony', 'goarch': 'amd64', 'uid': 20010001, 'pid': 202}
-    return {'schema_version': 1, 'core_revision': 'b637b8617624655906b737977f50de5280bf7f65',
+    return {'schema_version': 1, 'core_revision': '129dd94577dbfc130e921acd417d551e5586e82a',
             'identity': identity, 'overall_pass': True, 'failed': [],
             'checks': [{'name': name, 'passed': True, 'process': {'uid': identity['uid'], 'pid': identity['pid']}}
                        for name in sorted(runner.REQUIRED)]}

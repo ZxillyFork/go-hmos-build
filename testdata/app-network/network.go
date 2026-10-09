@@ -30,7 +30,7 @@ import (
 const operationTimeout = 3 * time.Second
 const checkTimeout = 5 * time.Second
 
-const coreRevision = "b637b8617624655906b737977f50de5280bf7f65"
+const coreRevision = "129dd94577dbfc130e921acd417d551e5586e82a"
 
 type processIdentity struct {
 	PID int `json:"pid"`
@@ -405,6 +405,9 @@ func buildReport() report {
 		add(result)
 	}
 	add(compareInterfaces(native, goList, addresses))
+	add(bounded("go.system_dns", "go-netgo", "system DNS", goSystemDNS))
+	add(bounded("go.system_timezone", "go-time", "system timezone", goSystemTimezone))
+	add(bounded("go.system_trust", "go-tls", "system trust", goSystemTrust))
 	for _, check := range out.Checks {
 		if !check.Passed { out.Failed = append(out.Failed, check.Name) }
 	}

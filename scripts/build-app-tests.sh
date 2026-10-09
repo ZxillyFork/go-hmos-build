@@ -28,7 +28,7 @@ unset CGO_CFLAGS CGO_CPPFLAGS CGO_CXXFLAGS CGO_FFLAGS CGO_LDFLAGS
 # with a different core. One shared Go runtime also contains the new checks.
 cmp "$root/src/cmd/cgo/internal/testcshared/testdata/openharmony/library/main.go" \
     "$build_root/testdata/app-network/core_smoke.go"
-(cd "$build_root/testdata/app-network" && "$root/bin/go" build -trimpath -buildmode=c-shared \
+(cd "$build_root/testdata/app-network" && "$root/bin/go" build -tags=netgo,osusergo -trimpath -buildmode=c-shared \
   -o "$project/entry/libs/x86_64/libgo_app_network.so" .)
 mv "$project/entry/libs/x86_64/libgo_app_network.h" "$out/"
 "$CC" -O2 -fPIC -shared "$project/entry/src/main/cpp/napi_host.c" \
