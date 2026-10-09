@@ -104,6 +104,19 @@ class ServiceReadinessTest(unittest.TestCase):
             self.assertTrue(any(r['name']=='app-services' for r in app.results))
             self.assertNotIn('install', repr(shell.call_args_list))
 
+    def test_ui_capture_uses_read_only_commands_and_detects_missing_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app=runner.AppRunner(directory,directory)
+            with mock.patch.object(app,'shell',return_value=(0,'')) as shell, \
+                 mock.patch.object(app,'run',return_value=(0,'')):
+                app.capture_ui('test-screen')
+            commands=[call.args[1] for call in shell.call_args_list]
+            self.assertEqual(len(commands),2)
+            self.assertTrue(commands[0].startswith('uitest screenCap -p /data/local/tmp/'))
+            self.assertTrue(commands[1].startswith('uitest dumpLayout -p /data/local/tmp/'))
+            self.assertNotIn('uiInput',repr(commands))
+            self.assertEqual(sum(r['name']=='app-ui-evidence-error' for r in app.results),2)
+
     def test_expired_readiness_cannot_install(self):
         with tempfile.TemporaryDirectory() as directory:
             app=runner.AppRunner(directory,directory)

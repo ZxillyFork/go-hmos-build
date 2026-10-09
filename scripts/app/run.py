@@ -95,6 +95,25 @@ class AppRunner(Runner):
             except (Failure, OSError) as error:
                 self.record("app-diagnostic-error", probe=name, detail=str(error))
 
+    def capture_ui(self, prefix):
+        # Read-only UI evidence before any future gesture: no key injection,
+        # lock settings, developer-mode changes or authentication is performed.
+        for action, suffix in (("screenCap", "png"), ("dumpLayout", "json")):
+            guest = f"/data/local/tmp/{prefix}.{suffix}"
+            target = self.logs / f"{prefix}.{suffix}"
+            try:
+                self.shell(prefix + "-" + action,
+                           f"uitest {action} -p {guest} && test -s {guest}",
+                           timeout=30)
+                self.run(prefix + "-recv-" + suffix,
+                         [self.tools / "hdc", "-t", TARGET, "file", "recv", guest, target],
+                         timeout=30, env=self.env())
+                if not target.is_file() or not target.stat().st_size:
+                    raise Failure("UI evidence transfer produced no file")
+                self.record("app-ui-evidence", file=target.name, bytes=target.stat().st_size)
+            except (Failure, OSError) as error:
+                self.record("app-ui-evidence-error", action=action, detail=str(error))
+
     def wait_for_app_services(self):
         self.phase = "app-service-readiness"
         deadline = time.monotonic() + 300
@@ -131,11 +150,16 @@ class AppRunner(Runner):
             self.diagnose_app("app-install-failure")
             raise Failure("ordinary HAP install failed; inspect app-install.log and diagnostics; no signing/security workaround applied")
         self.shell("app-bundle", f"bm dump -n {BUNDLE}", check=False)
+        self.shell("app-uitest-help", "uitest help", timeout=20, check=False)
+        self.capture_ui("app-before-launch")
         token = secrets.token_hex(16)
         self.phase = "app-launch"
-        _, start = self.shell("app-start", f"aa start -a EntryAbility -b {BUNDLE} -m entry --ps token {token}")
-        if not re.search(r"start ability successfully", start, re.I):
-            raise Failure("normal ability launch did not report success")
+        status, start = self.shell("app-start", f"aa start -a EntryAbility -b {BUNDLE} -m entry --ps token {token}",
+                                   timeout=45, check=False)
+        if status or not re.search(r"start ability successfully", start, re.I):
+            self.capture_ui("app-launch-failure")
+            self.diagnose_app("app-launch-failure")
+            raise Failure("normal ability launch did not report success; see launch/UI diagnostics")
         self.phase = "app-network"
         deadline = time.monotonic() + 180
         report = None
