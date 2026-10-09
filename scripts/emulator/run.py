@@ -84,15 +84,34 @@ class Runner:
                                     stderr=subprocess.STDOUT,
                                     stdin=subprocess.PIPE if input_text is not None else subprocess.DEVNULL,
                                     env=env, cwd=cwd, start_new_session=True)
-            try:
-                proc.communicate(input_text.encode() if input_text is not None else None,
-                                 timeout=timeout)
-                code = proc.returncode
-            except subprocess.TimeoutExpired:
-                os.killpg(proc.pid, signal.SIGKILL)
-                proc.communicate()
-                output.write(f"\nHOST TIMEOUT after {timeout}s\n")
-                code = 124
+            deadline = time.monotonic() + timeout
+            pending_input = input_text.encode() if input_text is not None else None
+            shown = 0
+            while True:
+                try:
+                    proc.communicate(pending_input, timeout=min(30, max(0.001, deadline - time.monotonic())))
+                    code = proc.returncode
+                    break
+                except subprocess.TimeoutExpired:
+                    pending_input = None
+                    # Leave progress in the live Actions log as well as the
+                    # artifact; the job-log API is unavailable until completion.
+                    progress = path.read_text(errors="replace")
+                    if not quiet and len(progress) > shown:
+                        print(progress[shown:][-4000:], flush=True)
+                    shown = len(progress)
+                    if time.monotonic() >= deadline:
+                        try:
+                            os.killpg(proc.pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                        try:
+                            proc.communicate(timeout=10)
+                        except subprocess.TimeoutExpired:
+                            output.write("\nProcess did not exit after SIGKILL\n")
+                        output.write(f"\nHOST TIMEOUT after {timeout}s\n")
+                        code = 124
+                        break
         text = path.read_text(errors="replace")
         if not quiet:
             print(text[-16000:], flush=True)
@@ -174,15 +193,17 @@ class Runner:
         self.cli("license", "-license", "accept")
         self.phase = "image-download"
         self.cli("image-catalog", "-imageList", "-deviceType", "2in1", "-downloaded", "false", timeout=180)
-        self.cli("install-image", "-install", "-deviceType", "2in1", "-osVersion",
-                 MANIFEST["image_version"], "-imageRoot", self.images, "-force", timeout=1200)
+        try:
+            self.cli("install-image", "-install", "-deviceType", "2in1", "-osVersion",
+                     MANIFEST["image_version"], "-imageRoot", self.images, "-force", timeout=2400)
+        finally:
+            self.run("image-files", ["find", self.images, "-maxdepth", "5", "-type", "f",
+                                     "-printf", "%P %s bytes\n"], check=False)
         systems = list(self.images.glob("system-image/HarmonyOS-6.1.1/pc*/system.img"))
         if len(systems) != 1:
             raise Failure("Expected exactly one official PC system image after installation")
         self.record("system-image", path=str(systems[0].relative_to(self.images)),
                     size=systems[0].stat().st_size, sha256=digest(systems[0]))
-        self.run("image-files", ["find", self.images, "-maxdepth", "5", "-type", "f",
-                                 "-printf", "%P %s bytes\n"])
         self.run("hdc-version", [self.tools / "hdc", "-v"], env=self.env())
         self.phase = "emulator-configuration"
         self.instances.mkdir(exist_ok=True)

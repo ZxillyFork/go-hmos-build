@@ -23,7 +23,7 @@ env:
 jobs:
   runtime:
     runs-on: ubuntu-24.04
-    timeout-minutes: 70
+    timeout-minutes: 90
     env:
       GO_SOURCE_ROOT: ${{ github.workspace }}/source
       GO_HMOS_CACHE_ROOT: ${{ github.workspace }}/.cache

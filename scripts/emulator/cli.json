@@ -8,5 +8,5 @@
   "reference": "https://github.com/Zxilly/cjv/tree/60759572e197520477d814b2382a6753e95fa44f/scripts/harmonyos-emulator",
   "prior_accepted_run": "https://github.com/Zxilly/cjv/actions/runs/37875586125",
   "image_version": "HarmonyOS 6.1.1(24)",
-  "image_path": "system-image/HarmonyOS-6.1.1/pc_x86"
+  "image_path": "system-image/HarmonyOS-6.1.1/pc_all_x86"
 }

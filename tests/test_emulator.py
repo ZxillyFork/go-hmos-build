@@ -7,6 +7,7 @@
 import importlib.util
 from pathlib import Path
 import tempfile
+import sys
 import unittest
 from unittest import mock
 
@@ -17,6 +18,21 @@ SPEC.loader.exec_module(emulator)
 
 
 class GuestStatusTest(unittest.TestCase):
+    def test_host_command_timeout_is_bounded(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runner = emulator.Runner(directory, directory)
+            code, text = runner.run("timeout", [sys.executable, "-c", "import time; time.sleep(5)"],
+                                    timeout=0.05, check=False)
+            self.assertEqual(code, 124)
+            self.assertIn("HOST TIMEOUT", text)
+
+    def test_command_echo_is_excluded_from_guest_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runner = emulator.Runner(directory, directory)
+            code, text = runner.run("echo", [sys.executable, "-c", "print('actual output')"])
+            self.assertEqual(code, 0)
+            self.assertEqual(text, "actual output\n")
+
     def test_success_requires_actual_guest_marker(self):
         self.assertEqual(emulator.guest_result("PASS\nTOKEN=0\n", "TOKEN"), 0)
 
