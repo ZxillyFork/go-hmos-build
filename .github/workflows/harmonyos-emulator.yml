@@ -92,15 +92,50 @@ jobs:
           bash scripts/download-sdk.sh
           export OHOS_NDK_HOME="$(cat "$SDK_DOWNLOAD_DIR/native-path.txt")"
           GOARCH=amd64 BUILD_NATIVE_TOOLS=0 bash scripts/build.sh
-          bash scripts/build-emulator-tests.sh
+          export GOOS=openharmony GOARCH=amd64 CGO_ENABLED=1
+          export CC="$OHOS_NDK_HOME/llvm/bin/clang --target=x86_64-linux-ohos --sysroot=$OHOS_NDK_HOME/sysroot"
+          (cd "$GO_SOURCE_ROOT/src/runtime/testdata/testprog" && "$GO_SOURCE_ROOT/bin/go" build -o "$GITHUB_WORKSPACE/openharmony-out/amd64/testprog" .)
           cp "$SDK_DOWNLOAD_DIR/sdk.sha256" "$SDK_DOWNLOAD_DIR/sdk-url.txt" openharmony-out/amd64/
-      - name: Execute real Go runtime, ABI and standard library checks
+      - name: Run upstream preemption programs in the official emulator
         run: |
+          cat > scripts/emulator/preempt-check.py <<'PY'
+          import os
+          from pathlib import Path
+          import run
+
+          def check(self, payload):
+              payload = Path(payload)
+              self.shell("prepare", f"mkdir -p {run.GUEST}")
+              for name in ("testprog", "runtime.test", "loader", "libgo_hmos_test.so"):
+                  self.run("send-" + name, [self.tools / "hdc", "-t", run.TARGET, "file", "send", payload / name, run.GUEST + "/" + name], env=self.env())
+                  self.shell("verify-" + name, f"cd {run.GUEST} && test \"$(sha256sum {name} | cut -d ' ' -f 1)\" = {run.digest(payload / name)} && chmod 755 {name}")
+              prefix = f"cd {run.GUEST} && "
+              code, output = self.shell("disabled-control", prefix + "GODEBUG=asyncpreemptoff=1 timeout -s KILL 5 ./testprog AsyncPreempt", check=False)
+              if code not in (124, 137) or "OK" in output:
+                  raise run.Failure("disabled preemption did not time out")
+              for i in range(10):
+                  _, output = self.shell(f"async-preempt-{i}", prefix + "timeout -s KILL 30 ./testprog AsyncPreempt")
+                  if "OK" not in output.splitlines():
+                      raise run.Failure("AsyncPreempt did not complete")
+              for program in ("GCFairness", "GCFairness2"):
+                  _, output = self.shell(program, prefix + f"timeout -s KILL 30 ./testprog {program}")
+                  if "OK" not in output.splitlines():
+                      raise run.Failure(program + " did not complete")
+              _, output = self.shell("runtime-policy", prefix + "./runtime.test -test.v -test.timeout=60s -test.run='^(TestPreemption|TestOpenHarmonyRuntimePolicy)$'")
+              if "PASS" not in output.splitlines() or "--- SKIP" in output:
+                  raise run.Failure("runtime tests did not pass")
+              _, output = self.shell("dlopen", prefix + "./loader ./libgo_hmos_test.so --no-network")
+              if "PASS: dlopen" not in output:
+                  raise run.Failure("c-shared callbacks failed")
+              self.record("preemption-pass", core="47aa1adf2313bafab842ce7efdcc2eb7f1ce5cfd")
+
+          run.Runner.test = check
+          run.Runner(os.environ["EMULATOR_ROOT"], "emulator-diagnostics").boot("openharmony-out/amd64")
+          PY
           sudo -E env HOME="$HOME" USER="$USER" LOGNAME="$LOGNAME" setpriv --reuid="$(id -u)" --regid="$(getent group kvm | cut -d: -f3)" \
-            --init-groups --inh-caps=-all --bounding-set=-all python3 scripts/emulator/run.py test
-          printf 'PASS: actual HarmonyOS x64 emulator execution at core %s.\n' \
+            --init-groups --inh-caps=-all --bounding-set=-all python3 scripts/emulator/preempt-check.py
+          printf 'PASS: upstream AsyncPreempt and GC fairness on HarmonyOS x64 at core %s.\n' \
             "$(cat openharmony-out/amd64/source-revision.txt)" >> "$GITHUB_STEP_SUMMARY"
-          printf 'Scope: hello, runtime/concurrency/GC/timers, cgo, pthread/dlopen, focused standard library. ARM and full Go suite were not run.\n' >> "$GITHUB_STEP_SUMMARY"
       - name: Record exact revisions and retain diagnostics
         if: always()
         run: |
