@@ -86,6 +86,17 @@ class ReportTest(unittest.TestCase):
 
 
 class ServiceReadinessTest(unittest.TestCase):
+    def test_normal_app_uses_xcb_but_shell_default_stays_headless(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app=runner.AppRunner(directory,directory)
+            shell=runner.Runner(directory,directory)
+            self.assertFalse(app.headless)
+            self.assertEqual(app.env()['QT_QPA_PLATFORM'],'xcb')
+            self.assertNotIn('-noWindow',app.start_command())
+            self.assertTrue(shell.headless)
+            self.assertEqual(shell.env()['QT_QPA_PLATFORM'],'offscreen')
+            self.assertIn('-noWindow',shell.start_command())
+
     def test_only_successful_bundle_list_proves_readiness(self):
         self.assertTrue(runner.app_services_ready("ID: 100:\n\tcom.ohos.launcher\n\tcom.ohos.settings\n"))
         for text in ["", "error: failed to execute your command.\n", "ID: 100:\n",

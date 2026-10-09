@@ -58,7 +58,8 @@ jobs:
             libgbm1 libgl1 libpng16-16 libfontconfig1 libfreetype6 libxcb-icccm4 \
             libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
             libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libsm6 libice6 \
-            libxkbcommon-x11-0 libxkbcommon0 libglib2.0-0
+            libxkbcommon-x11-0 libxkbcommon0 libglib2.0-0 xvfb xauth mesa-utils \
+            libgl1-mesa-dri libegl-mesa0
       - name: Download checksum-pinned Huawei CLI 26.0.0.821
         run: python3 scripts/emulator/run.py download
       - name: Recheck exact previously accepted agreements before app build
@@ -91,9 +92,17 @@ jobs:
       - name: Install official HarmonyOS 6.1.1 API 24 PC image
         run: python3 scripts/emulator/run.py install
       - name: Install normal debug HAP and test app network permissions
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
         run: |
           sudo -E env HOME="$HOME" USER="$USER" LOGNAME="$LOGNAME" setpriv --reuid="$(id -u)" --regid="$(getent group kvm | cut -d: -f3)" \
-            --init-groups --inh-caps=-all --bounding-set=-all python3 scripts/app/run.py
+            --init-groups --inh-caps=-all --bounding-set=-all \
+            xvfb-run -a -s '-screen 0 1920x1080x24 -nolisten tcp' bash -c '
+              set -e
+              mkdir -p app-diagnostics
+              glxinfo -B > app-diagnostics/host-glxinfo.log
+              python3 scripts/app/run.py
+            '
       - name: Record exact revisions and retain diagnostics
         if: always()
         run: |

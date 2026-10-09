@@ -131,19 +131,21 @@ python3 -m unittest discover -s tests -v
 
 ## 真实设备验证
 
-### 正常应用进程网络实验（待执行）
+### 正常应用进程网络实验（构建、安装通过，启动仍受阻）
 
 新增 `HarmonyOS x64 app network` 工作流：在相同官方 x64/API 24 模拟器中，
-通过标准 `hdc install` / `aa start` 安装并启动一个 debug HAP。它只声明
+通过标准 `hdc install` / `aa start` 安装并尝试启动一个 debug HAP。它只声明
 `ohos.permission.INTERNET`，使用普通应用 UID，在同一进程比较原生 C 与 Go。
 N-API 包装异步加载一个 Go c-shared 库；库中保留固定核心的原始 smoke fixture，
 另加 TCP/UDP loopback、相同 socket flags 的 bind / `SO_BROADCAST`、
 `getifaddrs` / `net.Interfaces` / 地址枚举对照。不会把 HDC shell 当作应用进程。
 
-当前仅准备了测试代码与离线检查，**尚无此 HAP 的模拟器执行结果**。
-先使用官方文档支持的无签名配置构建，再实测模拟器的普通安装是否接受；
-不假定 API 24 支持任意签名，不创建密钥/账户，不放宽签名或网络策略。
-如果普通安装拒绝，将保留确切错误并停止。原有 shell 测试的失败仍保留。
+已在 [run 37913592375](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37913592375)
+真实构建并通过普通 `hdc install` 安装 unsigned debug HAP；无需新签名密钥或账户。
+`aa start` 报屏幕锁定（10106102），同时模拟器日志记录 host EGL 配置选择失败，
+截图/布局获取失败。**应用内 Go/C 网络检查尚未执行，不能报告通过或权限结论。**
+当前改用 Xvfb/Mesa 的正常窗口测试主机图形初始化，不调整 guest 安全策略。
+原有 shell 测试的失败仍保留。
 详细范围及后续精确提交结果见
 [应用进程验证记录](VALIDATION.md#normal-app-process-network-validation)。
 

@@ -82,6 +82,11 @@ def app_services_ready(text):
 
 
 class AppRunner(Runner):
+    # The official engine's surfaceless fallback failed EGL config selection on
+    # the CI runner. A normal window on Xvfb supplies host rendering, while all
+    # guest permissions, lock policy and developer-mode settings stay intact.
+    headless = False
+
     def diagnose_app(self, prefix):
         commands = {
             "boot": "param get bootevent.boot.completed; param get bootevent.bms.main.bundles.ready",
@@ -201,6 +206,8 @@ class AppRunner(Runner):
 def main():
     runner = AppRunner(os.environ["EMULATOR_ROOT"], "app-diagnostics")
     try:
+        if not os.environ.get("DISPLAY"):
+            raise Failure("normal app emulator requires a host X display (run under Xvfb)")
         runner.boot(".app-out")
     except (Failure, OSError, ValueError) as error:
         runner.record("failure", detail=str(error))

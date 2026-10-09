@@ -11,7 +11,8 @@ results below apply only to their stated exact source revisions.
 
 ## Normal app-process network validation
 
-**Status: harness prepared; target app execution has not yet been performed.**
+**Status: actual HAP build, packed validation and ordinary unsigned installation
+passed; ability launch is blocked, so app-process network tests remain unexecuted.**
 This is a separate experiment from the completed, failing HDC-shell test below.
 The core pin remains `b637b8617624655906b737977f50de5280bf7f65`; no core change,
 merge, release, physical device or ARM execution is part of this experiment.
@@ -56,8 +57,8 @@ their stage and errno, and never turn into a successful overall workflow.
   [introduction](https://developer.huawei.com/consumer/cn/develop-novice-guide/)
   states that emulator debugging does not require signing configuration, and
   its [build profile documentation](https://developer.huawei.com/consumer/cn/doc/doccenter-deveco-studio/ide-hmos-hvigor-build-profile-app)
-  defines omitted signingConfig as unsigned. Actual acceptance by this exact
-  API24 image remains an installation-stage test, not an assumption.
+  defines omitted signingConfig as unsigned. Ordinary unsigned installation
+  succeeded on this exact API24 image in runs 37912008534 and 37913592375.
 - An ordinary `hdc install` signature failure stops the experiment with its
   exact diagnostics. No account login, new signing key/profile, verifier bypass,
   SELinux change, additional app permission or guest root execution is used.
@@ -65,6 +66,32 @@ their stage and errno, and never turn into a successful overall workflow.
 These are bounded app-startup and network probes. They do not establish
 public Internet/DNS reachability, system trust roots, general lifecycle
 correctness, release signing, app-store readiness or full Go suite coverage.
+
+### Executed app-harness stages
+
+The latest completed run is [37913592375](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37913592375),
+build revision `84500e6563cea5ef6d44141861d3969817387e1b`, overall **failure**.
+
+- Exact pinned Go core bootstrap, six host Go fixture tests, target Go/C
+  compilation, ArkTS compilation and normal debug HAP packaging passed.
+- The packed HAP declares only INTERNET, is debug, contains only the two expected
+  x86_64 libraries, and encodes minimum/target HarmonyOS 6.1.1 API24 as `60101024`.
+- The official guest identifies as OpenHarmony 6.1.1.125/API24/x86_64.
+  After BMS readiness, ordinary `hdc install` succeeded; the bundle has normal
+  app UID `20020049`. This is install evidence, not an executed app identity.
+- `aa start` reports error 10106102, screen locked, with automatic unlocking
+  unavailable in developer mode. No developer-mode or lock-policy change was made.
+- Both official `uitest screenCap` attempts failed to obtain a display pixelMap;
+  layout capture timed out/failed. No actual screenshot or UI tree was produced.
+- The engine's `qemu.log` first reports no GBM device, then surfaceless EGL 1.5,
+  then `Failed to choose EGL config: 0x3000`. This is host graphics initialization
+  evidence; it does not prove a password or a Go failure. The normal-window
+  Xvfb/Mesa follow-up is a host-only recovery attempt, not yet a successful run.
+
+Earlier app runs are retained: 37908631884 exposed an overly strict bare-API24
+validator assumption after successful packaging; 37910446087 attempted installation
+before BMS was ready; 37912008534 first proved successful ordinary installation
+and exposed the ability-launch blocker. None provided an app-network report.
 
 ## Official x64 emulator runtime validation
 
@@ -176,11 +203,10 @@ matched native C/Go network probes. An HDC shell launched from an app directory
 is not equivalent to that application context. INTERNET does **not** guarantee
 that every NETLINK_ROUTE operation or `getifaddrs` will be allowed.
 
-That app-context build/install/run has not been performed. The official
-emulator-debug signing route must be checked before deciding whether account
-credentials are needed; unsigned or arbitrary self-signed HAP acceptance is
-not assumed. Account-backed signing, new credentials/profiles or new legal
-terms are not implied by the completed shell test.
+The subsequent bounded app experiment is recorded above: real build and ordinary
+unsigned installation passed, while app startup/network execution remain blocked.
+Account-backed signing, new credentials/profiles or new legal terms are not
+implied by the completed shell test.
 
 ### Harness validation and initial failures
 
