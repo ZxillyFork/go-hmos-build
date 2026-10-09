@@ -3,10 +3,6 @@
     {
       "name": "module_desc",
       "value": "Bounded Go and native C app-process network checks"
-    },
-    {
-      "name": "app_name",
-      "value": "Go network test"
     }
   ]
 }

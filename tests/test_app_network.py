@@ -86,8 +86,9 @@ class ReportTest(unittest.TestCase):
 
 class PackedHapTest(unittest.TestCase):
     def test_actual_packed_permissions_checked(self):
-        module={'app':{'bundleName':'org.gohmos.networktest','debug':True,'minAPIVersion':24},
-                'module':{'requestPermissions':[{'name':'ohos.permission.INTERNET'}]}}
+        module={'app':{'bundleName':'org.gohmos.networktest','debug':True,'minAPIVersion':60101024,
+                       'targetAPIVersion':60101024,'compileSdkType':'HarmonyOS'},
+                'module':{'virtualMachine':'ark24.0.0.0','requestPermissions':[{'name':'ohos.permission.INTERNET'}]}}
         with tempfile.TemporaryDirectory() as folder:
             path=Path(folder)/'entry.hap'
             for extra in [False,True]:
@@ -99,6 +100,23 @@ class PackedHapTest(unittest.TestCase):
                 if extra:
                     with self.assertRaises(ValueError): hap.validate(path)
                 else: self.assertEqual(hap.validate(path),module)
+
+
+    def test_wrong_packed_api_or_vm_rejected(self):
+        original={'app':{'bundleName':'org.gohmos.networktest','debug':True,
+                         'minAPIVersion':60101024,'targetAPIVersion':60101024,'compileSdkType':'HarmonyOS'},
+                  'module':{'virtualMachine':'ark24.0.0.0',
+                            'requestPermissions':[{'name':'ohos.permission.INTERNET'}]}}
+        for section,key,value in [('app','minAPIVersion',24),('app','minAPIVersion',60101023),
+                                  ('app','targetAPIVersion',26000000),('app','compileSdkType','OpenHarmony'),
+                                  ('module','virtualMachine','ark26.0.0.0')]:
+            module=copy.deepcopy(original); module[section][key]=value
+            with self.subTest(key=key,value=value), tempfile.TemporaryDirectory() as folder:
+                path=Path(folder)/'wrong.hap'
+                with zipfile.ZipFile(path,'w') as z:
+                    z.writestr('module.json',json.dumps(module))
+                with self.assertRaisesRegex(ValueError,'HarmonyOS 6.1.1'):
+                    hap.validate(path)
 
 
 if __name__=='__main__': unittest.main()

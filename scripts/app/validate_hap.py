@@ -17,8 +17,13 @@ def validate(path):
             raise ValueError("unexpected app identity")
         if app.get("debug", app.get("debuggable")) is not True:
             raise ValueError("packed app is not debuggable")
-        if app.get("minAPIVersion") != 24:
-            raise ValueError("packed app must target minimum API24")
+        # HarmonyOS 6.1.1(24) is encoded as 60101024 by the official
+        # 26.0.0 packer, rather than the bare OpenHarmony API integer 24.
+        if (app.get("minAPIVersion") != 60101024 or
+                app.get("targetAPIVersion") != 60101024 or
+                app.get("compileSdkType") != "HarmonyOS" or
+                mod.get("virtualMachine") != "ark24.0.0.0"):
+            raise ValueError("packed app must target HarmonyOS 6.1.1(24)/Ark24")
         permissions = [p["name"] for p in mod.get("requestPermissions", [])]
         if permissions != ["ohos.permission.INTERNET"]:
             raise ValueError("packed app must declare only INTERNET")
@@ -34,6 +39,7 @@ def validate(path):
 
 
 if __name__ == "__main__":
+    with zipfile.ZipFile(sys.argv[1]) as source:
+        Path(sys.argv[2], "packed-module.json").write_bytes(source.read("module.json"))
     result = validate(sys.argv[1])
-    Path(sys.argv[2], "packed-module.json").write_text(json.dumps(result, indent=2) + "\n")
     print("PASS: unsigned debug HAP, API24, x86_64, INTERNET only")
