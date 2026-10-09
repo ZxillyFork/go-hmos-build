@@ -44,6 +44,42 @@ class SourcePinTest(unittest.TestCase):
         self.assertEqual(manifest["bootstrap_version"], "1.27.2")
 
 
+class HostEnvironmentTest(unittest.TestCase):
+    def test_security_tests_use_current_module_defaults(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "src").mkdir()
+            (root / "src/make.bash").touch()
+            (root / "VERSION").write_text("go1.27.2-hmos-devel\n")
+            (root / "bin").mkdir()
+            go = root / "bin/go"
+            go.write_text('''#!/usr/bin/env python3
+import json, os, sys
+with open(os.environ["MOCK_HOST_LOG"], "a") as log:
+    log.write(json.dumps({"args": sys.argv[1:], "cwd": os.getcwd(),
+                          "module": os.environ.get("GO111MODULE"),
+                          "gopath": os.environ.get("GOPATH")}) + "\\n")
+if sys.argv[1] == "tool":
+    print("go1.27.2-hmos-devel buildID=offline-fixture")
+''')
+            go.chmod(0o755)
+            log = root / "host.jsonl"
+            result = run("test-host.sh", env={"GO_SOURCE_ROOT": directory,
+                         "GO_HMOS_CACHE_ROOT": str(root / "cache"),
+                         "MOCK_HOST_LOG": str(log)})
+            self.assertEqual(result.returncode, 0, result.stderr)
+            calls = [json.loads(line) for line in log.read_text().splitlines()]
+            security = [call for call in calls if "-count=1" in call["args"]]
+            self.assertEqual(len(security), 3)
+            for call in security:
+                self.assertEqual(call["cwd"], str(root / "src"))
+                self.assertEqual(call["module"], "on")
+                self.assertEqual(call["gopath"], str(root / "cache/gopath"))
+            self.assertIn("crypto/tls", security[0]["args"])
+            self.assertIn("os", security[1]["args"])
+            self.assertIn("-race", security[2]["args"])
+
+
 class SDKDownloadTest(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()

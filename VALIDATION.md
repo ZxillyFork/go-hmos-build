@@ -31,7 +31,10 @@ verified against the official SHA-256
 This revision adds full host-package tests for `crypto/tls`, `net/textproto`,
 `mime/multipart`, `net/http`, `net/http/httputil`, and `net/http/internal/http2`,
 selected `os.Root` regressions, and a race-enabled
-`TestServer_HeaderTableSizeDuringWrite`. The separate installer executes the
+`TestServer_HeaderTableSizeDuringWrite`. Standard-library behavioral tests use
+`src/go.mod` in module mode: GOPATH mode incorrectly selects Go 1.20 GODEBUG
+compatibility defaults. An offline command-environment regression checks this.
+The separate installer executes the
 installed fork's selected `os.Root` regressions on Linux, macOS, and Windows;
 Windows must report explicit passes for dangling-junction mkdir cases.
 Linux and cross-compilation cannot establish Windows junction behavior.

@@ -23,6 +23,9 @@ go test internal/platform internal/buildcfg go/build cmd/go/internal/imports \
   cmd/internal/obj/arm64 cmd/internal/obj/x86 cmd/internal/objabi
 go test cmd/api -run '^TestCheck$' -check
 go test cmd/go -run '^TestScript/build_openharmony$'
+# Standard-library behavioral tests need src/go.mod's current Go defaults.
+# GOPATH mode would instead select Go 1.20 GODEBUG compatibility settings.
+export GO111MODULE=on GOPATH="$cache_root/gopath"
 # Exercise the upstream Go 1.27.2 security fixes with the rebuilt fork.
 # Windows junction handling also requires the installer CI's native Windows run.
 go test -count=1 -timeout=10m crypto/tls net/textproto net/http \
