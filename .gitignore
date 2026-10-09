@@ -12,3 +12,7 @@ emulator-diagnostics/
 # Disposable normal-app HAP builds
 .app-build/
 .app-out/
+
+# Go-only SDK distribution output
+sdk-dist/
+published/

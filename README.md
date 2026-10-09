@@ -18,7 +18,9 @@ release 应用、外网/DNS、真机与 ARM 仍未验证。见[应用进程实�
 
 ## 当前源代码固定状态
 
-默认核心提交为 [b637b8617624](https://github.com/ZxillyFork/go-hmos/commit/b637b8617624655906b737977f50de5280bf7f65)，
+默认核心提交为 [7830d8769fef](https://github.com/ZxillyFork/go-hmos/commit/7830d8769fefbe02c3b23d24f3d04bde6a1382da)，
+这是独立 `hmos-release-branch.go1.27` 的合并提交，代码树与已测 `b637b8617624` 相同；
+原官方 `release-branch.go1.27` 未改动。
 基于官方 Go 1.27.2，保留前两轮 review 后的 OpenHarmony、TLS、栈元数据和
 ELF note 修复，并使用独立的 `runtime.GOOS = "openharmony"` 身份。
 工具版本为 `go1.27.2-hmos-devel`，保留独立的内容 build ID。
@@ -33,13 +35,20 @@ go install github.com/ZxillyFork/go-hmos-installer/go1.27.2-hmos@latest
 go1.27.2-hmos download
 ```
 
-它固定该核心提交，可与官方 `go1.27.2` helper 并存；旧安装器根入口仍保留
+该安装器仍固定已测 `b637b8617624`（与上述新合并提交代码树相同），可与官方 `go1.27.2` helper 并存；旧安装器根入口仍保留
 原版本。最终安装器的 Linux/macOS/Windows 与最低 Go CI 均已通过，详见
 [安装器验证](VALIDATION.md#versioned-installer)。
-该精确提交已通过 [host 与官方 SDK 检查](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37872123883)，
+先前 `b637b8617624` 已通过 [host 与官方 SDK 检查](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37872123883)，
 覆盖 ARM64 和 AMD64。详细结果、已核验工件及安装器更新状态见
 [VALIDATION.md](VALIDATION.md)。SDK 编译/链接/ELF 检查**不等于目标设备执行**。
 默认推送运行 host 检查；真实 SDK 检查需手动选择 `sdk=true`。
+
+## Linux Go 工具链 SDK 包
+
+版本化 Linux/amd64 工具链 prerelease 及官方 `actions/setup-go` 接入见
+[Linux SDK 文档](docs/linux-sdk.md)。该包只含 Go 工具链，不含 Huawei SDK。
+独立发布工作流会先检查 host、setup-go 加载及两种目标交叉链接，再发布到
+`go1.27.2-hmos.1` prerelease；已存在的版本不会覆盖。CI 最终状态才是验证结果。
 
 ## GitHub Actions
 
@@ -61,7 +70,7 @@ go1.27.2-hmos download
 每个构建任务在 bootstrap 前再次核对 checkout 的实际 SHA。测试其他提交前请先
 审查其代码；构建源代码本身会执行该提交中的程序。
 
-工作流仅请求 `contents: read`，checkout 不保留凭据，不创建令牌、不发布 release，
+以上验证工作流仅请求 `contents: read`，checkout 不保留凭据，不创建令牌、不发布 release，
 也不修改核心仓库。Actions 固定到已核验的具体提交。工具链使用官方 Go 1.27.2
 bootstrap，关闭 setup-go 构建缓存；bootstrap、host test、每个 SDK 架构分别使用
 不同的 GOCACHE。host 检查同时验证 fork 的开发版 build ID，并回归测试与上游

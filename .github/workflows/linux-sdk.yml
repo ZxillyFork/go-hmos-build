@@ -1,0 +1,197 @@
+name: Linux Go-HMOS SDK prerelease
+
+on:
+  push:
+    branches: [ci/linux-sdk]
+    paths:
+      - '.github/workflows/linux-sdk.yml'
+      - 'scripts/sdk/**'
+      - 'tests/test_sdk.py'
+      - 'sdk-release.json'
+      - 'source.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  GOENV: 'off'
+  GOTOOLCHAIN: local
+
+jobs:
+  package-and-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      tag: ${{ steps.config.outputs.tag }}
+      version: ${{ steps.config.outputs.version }}
+      core_sha: ${{ steps.config.outputs.core_sha }}
+    env:
+      GO_SOURCE_ROOT: ${{ github.workspace }}/source
+      GO_HMOS_CACHE_ROOT: ${{ github.workspace }}/.cache
+      SDK_OUTPUT_DIR: ${{ github.workspace }}/sdk-dist
+      SDK_DOWNLOAD_DIR: ${{ github.workspace }}/.sdk
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Validate metadata and offline tests
+        id: config
+        run: |
+          python3 scripts/sdk/metadata.py check
+          for script in scripts/*.sh scripts/sdk/*.sh; do bash -n "$script"; done
+          python3 -m unittest discover -s tests -v
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          s = json.load(open('source.json'))
+          r = json.load(open('sdk-release.json'))
+          print('core_sha=' + s['revision'])
+          print('tag=' + r['release_tag'])
+          print('version=' + r['go_version'][2:])
+          PY
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ZxillyFork/go-hmos
+          ref: ${{ steps.config.outputs.core_sha }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.27.2'
+          cache: false
+      - name: Bootstrap exact release-branch merge and run host regressions
+        env:
+          EXPECTED_SHA: ${{ steps.config.outputs.core_sha }}
+        run: |
+          test "$(git -C "$GO_SOURCE_ROOT" rev-parse HEAD)" = "$EXPECTED_SHA"
+          bash scripts/bootstrap.sh
+          bash scripts/test-host.sh
+      - name: Create standard Go archive and checksums
+        run: |
+          bash scripts/sdk/package.sh
+          (cd sdk-dist && sha256sum --check SHA256SUMS)
+          tar -tzf sdk-dist/go*.tar.gz > "$RUNNER_TEMP/archive-members.txt"
+          grep -Fx go/bin/go "$RUNNER_TEMP/archive-members.txt"
+          grep -Fx go/src/runtime/runtime.go "$RUNNER_TEMP/archive-members.txt"
+          grep -Fx go/HMOS-SDK.json "$RUNNER_TEMP/archive-members.txt"
+          if grep -E '(^|/)(\.git|\.sdk|\.gh-auth|sysroot)(/|$)' "$RUNNER_TEMP/archive-members.txt"; then
+            echo 'Unexpected private/native SDK content in archive' >&2; exit 1
+          fi
+      - name: Serve candidate archive for pre-publication official setup-go test
+        run: |
+          nohup python3 -m http.server 8765 --bind 127.0.0.1 --directory sdk-dist \
+            > "$RUNNER_TEMP/sdk-http.log" 2>&1 &
+          for attempt in {1..20}; do
+            if curl --fail --silent http://127.0.0.1:8765/SHA256SUMS >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Official setup-go loads the candidate custom distribution
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: ${{ steps.config.outputs.version }}
+          go-download-base-url: http://127.0.0.1:8765
+          token: ''
+          cache: false
+      - name: Verify selected fork and both target Go/assembly builds
+        run: bash scripts/sdk/verify.sh
+      - name: Obtain checksum-verified public native SDK for link tests only
+        run: bash scripts/download-sdk.sh
+      - name: Cross-link both architectures using setup-go-selected distribution
+        run: |
+          export OHOS_NDK_HOME="$(cat "$SDK_DOWNLOAD_DIR/native-path.txt")"
+          bash scripts/sdk/verify.sh
+          printf 'Both targets passed PIE/c-shared compile, link, ELF/TLS and identity checks. Target execution not performed.\n' >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain distributable Go-only files
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux-go-hmos-sdk
+          path: sdk-dist/
+          if-no-files-found: error
+          retention-days: 30
+
+  publish-and-verify:
+    needs: package-and-test
+    if: github.repository == 'ZxillyFork/go-hmos-build' && github.ref == 'refs/heads/ci/linux-sdk'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ needs.package-and-test.outputs.tag }}
+      EXPECTED_CORE: ${{ needs.package-and-test.outputs.core_sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: linux-go-hmos-sdk
+          path: sdk-dist
+      - name: Publish a new versioned prerelease without overwriting an existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          (cd sdk-dist && sha256sum --check SHA256SUMS)
+          if gh release view "$RELEASE_TAG" --json isPrerelease,assets > "$RUNNER_TEMP/existing-release.json" 2>/dev/null; then
+            # A retry may resume read-only verification of this exact complete
+            # release. Different or partial releases are never overwritten.
+            test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.type')" = commit
+            test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')" = "$GITHUB_SHA"
+            python3 - "$RUNNER_TEMP/existing-release.json" <<'PY'
+          import json, sys
+          r = json.load(open(sys.argv[1]))
+          assert r['isPrerelease'] is True
+          assert sorted(a['name'] for a in r['assets']) == sorted([
+              'go1.27.2-hmos-devel.linux-amd64.tar.gz', 'SHA256SUMS',
+              'provenance.json', 'sdk-manifest.json'])
+          PY
+            gh release download "$RELEASE_TAG" --dir "$RUNNER_TEMP/existing-sdk"
+            for path in sdk-dist/go*.tar.gz sdk-dist/SHA256SUMS sdk-dist/provenance.json sdk-dist/sdk-manifest.json; do
+              cmp "$path" "$RUNNER_TEMP/existing-sdk/$(basename "$path")"
+            done
+            echo 'Exact existing release verified; resuming read-only checks.'
+            exit 0
+          fi
+          # --target does not override a pre-existing tag. Check the tag API
+          # successfully before creating a release, even when no release exists.
+          gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/$RELEASE_TAG" > "$RUNNER_TEMP/tag-refs.json"
+          python3 - "$RUNNER_TEMP/tag-refs.json" <<'PY'
+          import json, os, sys
+          for ref in json.load(open(sys.argv[1])):
+              if ref['ref'] == 'refs/tags/' + os.environ['RELEASE_TAG']:
+                  assert ref['object']['type'] == 'commit'
+                  assert ref['object']['sha'] == os.environ['GITHUB_SHA']
+          PY
+          gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --prerelease --latest=false \
+            --title "Go-HMOS Linux SDK $RELEASE_TAG" --notes-file sdk-dist/RELEASE-NOTES.md \
+            sdk-dist/go*.tar.gz sdk-dist/SHA256SUMS sdk-dist/provenance.json sdk-dist/sdk-manifest.json
+      - name: Download published bytes and verify every recorded checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.type')" = commit
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')" = "$GITHUB_SHA"
+          test "$(gh release view "$RELEASE_TAG" --json isPrerelease --jq '.isPrerelease')" = true
+          gh release download "$RELEASE_TAG" --dir published
+          cmp sdk-dist/SHA256SUMS published/SHA256SUMS
+          cmp sdk-dist/sdk-manifest.json published/sdk-manifest.json
+          (cd published && sha256sum --check SHA256SUMS)
+          gh release view "$RELEASE_TAG" --json url,isPrerelease,targetCommitish,assets
+      - name: Official setup-go loads the actual published release
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: ${{ needs.package-and-test.outputs.version }}
+          go-download-base-url: https://github.com/ZxillyFork/go-hmos-build/releases/download/${{ needs.package-and-test.outputs.tag }}
+          token: ''
+          cache: false
+      - name: Verify published compiler identity, core revision and target compilation
+        run: |
+          test "$(cat "$(go env GOROOT)/core-revision.txt")" = "$EXPECTED_CORE"
+          bash scripts/sdk/verify.sh
+          printf 'Published and re-downloaded: https://github.com/ZxillyFork/go-hmos-build/releases/tag/%s\n' "$RELEASE_TAG" >> "$GITHUB_STEP_SUMMARY"
+          cat published/SHA256SUMS >> "$GITHUB_STEP_SUMMARY"

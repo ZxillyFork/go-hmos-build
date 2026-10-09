@@ -1,0 +1,7 @@
+{
+  "release_tag": "go1.27.2-hmos.1",
+  "go_version": "go1.27.2-hmos-devel",
+  "host_os": "linux",
+  "host_arch": "amd64",
+  "setup_go_commit": "924ae3a1cded613372ab5595356fb5720e22ba16"
+}
