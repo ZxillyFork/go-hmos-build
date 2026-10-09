@@ -47,8 +47,10 @@ go1.27.2-hmos download
 
 版本化 Linux/amd64 工具链 prerelease 及官方 `actions/setup-go` 接入见
 [Linux SDK 文档](docs/linux-sdk.md)。该包只含 Go 工具链，不含 Huawei SDK。
-独立发布工作流会先检查 host、setup-go 加载及两种目标交叉链接，再发布到
-`go1.27.2-hmos.1` prerelease；已存在的版本不会覆盖。CI 最终状态才是验证结果。
+[`go1.27.2-hmos.1` prerelease](https://github.com/ZxillyFork/go-hmos-build/releases/tag/go1.27.2-hmos.1)
+已发布；[CI 37922403510](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37922403510)
+通过精确合并 SHA 的 host 回归、官方 setup-go 加载、两种目标交叉链接，以及
+发布后的重新下载与摘要校验。已存在版本不会覆盖；设备执行边界不因此扩大。
 
 ## GitHub Actions
 

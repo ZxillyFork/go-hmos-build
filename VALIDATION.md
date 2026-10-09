@@ -657,3 +657,23 @@ because the default core pin was still unset at that point.
 4. Sign/deploy as required by the selected OS/device and run the documented
    loader and standard-library tests. Only those results can establish actual
    target execution. Retain OS/API/SDK/build identifiers in the report.
+
+## Linux SDK prerelease go1.27.2-hmos.1
+
+- Build workflow: https://github.com/ZxillyFork/go-hmos-build/actions/runs/37922403510 — success
+- Core merge: `7830d8769fefbe02c3b23d24f3d04bde6a1382da`; build: `9fa8ed40c031fa9ac431251fd23660082ab494f5`
+- Release: https://github.com/ZxillyFork/go-hmos-build/releases/tag/go1.27.2-hmos.1
+- Host: Linux/amd64; compiler identity: `go1.27.2-hmos-devel`
+- Archive SHA-256: `04b5b24bcee3115be7cda879075c673245cd5655bb13c58261bea07b1bd4c072`
+
+The exact merged source was bootstrapped and passed host/platform/API/security regressions.
+The standard Go archive was loaded by the pinned official setup-go both before publication
+and from the real release URL afterward. Fresh-cache source rebuilds cover generated
+tzdata/buildcfg/cgo/compiler/Go-command sources. Both OpenHarmony target architectures
+passed runtime code-generation checks and public-native-SDK PIE/c-shared linking with
+ELF/TLS inspection. Published archive/provenance checksums were verified in CI and by a
+separate download; the selected fork identity and embedded source SHA were checked.
+
+This SDK run does not execute binaries on a target device. No native SDK is redistributed.
+[Retained verification record](validation/linux-sdk-37922403510.json) and
+[setup-go integration](docs/linux-sdk.md) describe the complete contract and remaining limits.

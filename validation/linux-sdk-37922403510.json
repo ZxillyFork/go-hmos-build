@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "run_url": "https://github.com/ZxillyFork/go-hmos-build/actions/runs/37922403510",
+  "run_id": 37922403510,
+  "conclusion": "success",
+  "build_commit": "9fa8ed40c031fa9ac431251fd23660082ab494f5",
+  "source_commit": "7830d8769fefbe02c3b23d24f3d04bde6a1382da",
+  "source_tree": "dc7dd95f99d9e8e86b97fee92eb7790961beccd8",
+  "release_url": "https://github.com/ZxillyFork/go-hmos-build/releases/tag/go1.27.2-hmos.1",
+  "prerelease": true,
+  "published_at": "2026-10-09T11:24:15Z",
+  "archive": "go1.27.2-hmos-devel.linux-amd64.tar.gz",
+  "archive_size_bytes": 101450856,
+  "archive_sha256": "04b5b24bcee3115be7cda879075c673245cd5655bb13c58261bea07b1bd4c072",
+  "archive_members": 17419,
+  "host": "linux/amd64",
+  "targets": [
+    "openharmony/arm64",
+    "openharmony/amd64"
+  ],
+  "setup_go_commit": "924ae3a1cded613372ab5595356fb5720e22ba16",
+  "setup_go_download_base_url": "https://github.com/ZxillyFork/go-hmos-build/releases/download/go1.27.2-hmos.1",
+  "verified": [
+    "exact merged source SHA bootstrap",
+    "host/platform/API/security regressions",
+    "official setup-go candidate custom download",
+    "fresh-cache tzdata and cmd/go/cgo/compile source rebuilds",
+    "both target runtime Go/assembly compilation",
+    "public native SDK both-target PIE/c-shared link and ELF/TLS checks",
+    "versioned prerelease creation and tag SHA",
+    "published archive/provenance SHA256SUMS readback",
+    "official setup-go actual release custom download",
+    "independent published download hashes and archive layout/provenance inspection"
+  ],
+  "not_verified": [
+    "target device execution in this run",
+    "ARM64 Linux host SDK",
+    "ARM device runtime",
+    "production/release app behavior"
+  ],
+  "native_sdk_redistributed": false,
+  "provenance_kind": "unsigned build metadata; not a cryptographic attestation",
+  "jobs": [
+    {
+      "name": "package-and-test",
+      "conclusion": "success",
+      "url": "https://github.com/ZxillyFork/go-hmos-build/actions/runs/37922403510/job/113793221104"
+    },
+    {
+      "name": "publish-and-verify",
+      "conclusion": "success",
+      "url": "https://github.com/ZxillyFork/go-hmos-build/actions/runs/37922403510/job/113796739583"
+    }
+  ]
+}

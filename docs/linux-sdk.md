@@ -7,7 +7,10 @@ Go 主机安装包，也不包含 Huawei 商业 SDK、OpenHarmony native SDK、�
 当前版本化 prerelease：`go1.27.2-hmos.1`。编译器自身版本保持
 `go1.27.2-hmos-devel`。核心固定到新分支 `hmos-release-branch.go1.27` 的合并提交
 [`7830d8769fefbe02c3b23d24f3d04bde6a1382da`](https://github.com/ZxillyFork/go-hmos/commit/7830d8769fefbe02c3b23d24f3d04bde6a1382da)。
-发布、SDK 加载和交叉编译通过与否以该 release 的构建工作流最终状态为准。
+首次发布已由 [CI 37922403510](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37922403510)
+完成全部构建、官方 setup-go 加载、两架构链接和发布后下载校验。
+归档 SHA-256：`04b5b24bcee3115be7cda879075c673245cd5655bb13c58261bea07b1bd4c072`。
+[完整验证记录](../validation/linux-sdk-37922403510.json)保留精确 SHA 和验证边界。
 ARM 设备运行、完整标准库通过率、发布版应用与生产就绪均未声明。
 
 ## 发布文件
