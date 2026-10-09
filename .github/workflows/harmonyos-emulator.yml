@@ -3,6 +3,16 @@ name: HarmonyOS x64 emulator runtime
 on:
   push:
     branches: [ci/harmonyos-amd64]
+    paths-ignore:
+      - '.github/workflows/harmonyos-app-network.yml'
+      - 'scripts/app/**'
+      - 'scripts/build-app-tests.sh'
+      - 'testdata/app-host/**'
+      - 'testdata/app-network/**'
+      - 'tests/test_app_network.py'
+      - 'README.md'
+      - 'VALIDATION.md'
+      - '.gitignore'
   workflow_dispatch:
 
 permissions:
