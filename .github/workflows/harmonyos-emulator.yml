@@ -95,6 +95,7 @@ jobs:
           export GOOS=openharmony GOARCH=amd64 CGO_ENABLED=1
           export CC="$OHOS_NDK_HOME/llvm/bin/clang --target=x86_64-linux-ohos --sysroot=$OHOS_NDK_HOME/sysroot"
           (cd "$GO_SOURCE_ROOT/src/runtime/testdata/testprog" && "$GO_SOURCE_ROOT/bin/go" build -o "$GITHUB_WORKSPACE/openharmony-out/amd64/testprog" .)
+          $CC -O2 -fPIE -pie testdata/system-config/native.c -ldl -o openharmony-out/amd64/system-native
           cp "$SDK_DOWNLOAD_DIR/sdk.sha256" "$SDK_DOWNLOAD_DIR/sdk-url.txt" openharmony-out/amd64/
       - name: Build standalone executables without cgo or an external linker
         run: |
@@ -107,7 +108,10 @@ jobs:
             "$GO_SOURCE_ROOT/bin/go" build -o "$out/standalone-go" cmd/go
             (cd "$GO_SOURCE_ROOT/src/runtime/testdata/testprog" && "$GO_SOURCE_ROOT/bin/go" build -o "$out/standalone-testprog" .)
             "$GO_SOURCE_ROOT/bin/go" test -c -o "$out/standalone-runtime.test" runtime
-            for name in standalone-hello standalone-go standalone-testprog standalone-runtime.test; do
+            "$GO_SOURCE_ROOT/bin/go" build -o "$out/system-config" testdata/system-config/main.go
+            "$GO_SOURCE_ROOT/bin/go" test -c -o "$out/system-net.test" net
+            "$GO_SOURCE_ROOT/bin/go" test -c -tags=timetzdata -o "$out/system-time.test" time
+            for name in standalone-hello standalone-go standalone-testprog standalone-runtime.test system-config system-net.test system-time.test; do
               readelf -h -l -d "$out/$name" > "$out/$name.elf.txt"
               grep -Eq 'Type:.*EXEC' "$out/$name.elf.txt"
               if grep -Eq 'INTERP|DYNAMIC|NEEDED' "$out/$name.elf.txt"; then
@@ -120,16 +124,42 @@ jobs:
         run: |
           cat > scripts/emulator/preempt-check.py <<'PY'
           import os
+          import json
           from pathlib import Path
           import run
 
           def check(self, payload):
               payload = Path(payload)
               self.shell("prepare", f"mkdir -p {run.GUEST}")
-              for name in ("testprog", "runtime.test", "loader", "libgo_hmos_test.so", "standalone-hello", "standalone-go", "standalone-testprog", "standalone-runtime.test"):
+              for name in ("testprog", "runtime.test", "loader", "libgo_hmos_test.so", "standalone-hello", "standalone-go", "standalone-testprog", "standalone-runtime.test", "system-config", "system-native", "system-net.test", "system-time.test"):
                   self.run("send-" + name, [self.tools / "hdc", "-t", run.TARGET, "file", "send", payload / name, run.GUEST + "/" + name], env=self.env())
                   self.shell("verify-" + name, f"cd {run.GUEST} && test \"$(sha256sum {name} | cut -d ' ' -f 1)\" = {run.digest(payload / name)} && chmod 755 {name}")
               prefix = f"cd {run.GUEST} && "
+              self.shell("system-layout", "param get persist.time.timezone; ls -l /dev/__parameters__/u:object_r:time_param:s0 /etc/localtime /etc/resolv.conf /dev/unix/socket/dnsproxyd; ls /etc/security/certificates | wc -l", check=False)
+              _, native_output = self.shell("system-native", prefix + "unset TZ; ./system-native", timeout=45)
+              _, go_output = self.shell("system-config", prefix + "unset TZ; ./system-config", timeout=45)
+              native = {}
+              for line in native_output.splitlines():
+                  if "=" in line:
+                      key, value = line.split("=", 1)
+                      native.setdefault(key, []).append(value)
+              report = next(json.loads(line) for line in go_output.splitlines() if line.startswith('{"'))
+              if report["offset"] != int(native["offset"][0]):
+                  raise run.Failure("Go local timezone differs from libc")
+              if report.get("roots", 0) < 1:
+                  raise run.Failure("no system roots loaded")
+              if native.get("username") and report.get("username") != native["username"][0]:
+                  raise run.Failure("Go user lookup differs from libc")
+              if native.get("dns_status") == ["0"]:
+                  expected = sorted(("["+addr+"]" if ":" in addr else addr)+":53" for addr in native.get("dns_server", []))
+                  if report["dns_servers"] != expected:
+                      raise run.Failure("Go DNS configuration differs from NetSys")
+              else:
+                  raise run.Failure("NetSys did not provide DNS configuration")
+              if native.get("interfaces_status") == ["0"] and report["interfaces"] != sorted(set(native.get("interface", []))):
+                  raise run.Failure("Go interface discovery differs from libc")
+              self.shell("system-net-tests", prefix + "./system-net.test -test.v -test.timeout=30s -test.run='^TestOpenHarmonyDNSConfig$'")
+              self.shell("system-time-tests", prefix + "./system-time.test -test.v -test.timeout=30s -test.run='^TestOpenHarmony(SystemTimeZone|PackedZones)$'")
               _, output = self.shell("standalone-hello", prefix + "./standalone-hello")
               if "openharmony/amd64 (runtime.GOOS=openharmony)" not in output:
                   raise run.Failure("standalone executable has the wrong identity")
@@ -154,7 +184,7 @@ jobs:
               _, output = self.shell("dlopen", prefix + "./loader ./libgo_hmos_test.so --no-network")
               if "PASS: dlopen" not in output:
                   raise run.Failure("c-shared callbacks failed")
-              self.record("standalone-pass", core="16f669dbd14ef195be75780974a26195ac168ec9")
+              self.record("standalone-pass", core="129dd94577dbfc130e921acd417d551e5586e82a")
 
           run.Runner.test = check
           run.Runner(os.environ["EMULATOR_ROOT"], "emulator-diagnostics").boot("openharmony-out/amd64")
