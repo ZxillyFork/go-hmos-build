@@ -18,7 +18,7 @@ class SDKMetadataTest(unittest.TestCase):
     def test_real_release_config(self):
         release, source = metadata.config()
         self.assertTrue(release['release_tag'].startswith('go1.27.2-hmos.'))
-        self.assertEqual(source['revision'], 'b34856b9da6b50b98c7765b3408c3d097b50867c')
+        self.assertEqual(source['revision'], '4f16eff34baee504014f56bd8b7148293f85362a')
 
     def test_moving_source_and_stock_version_rejected(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -48,8 +48,8 @@ class SDKMetadataTest(unittest.TestCase):
             result = metadata.manifest(root)
             self.assertEqual(result['sha256'], hashlib.sha256(b'offline fixture').hexdigest())
             self.assertFalse(result['native_sdk_included'])
-            self.assertEqual(result['source_commit'], 'b34856b9da6b50b98c7765b3408c3d097b50867c')
-            self.assertIn('/releases/download/go1.27.2-hmos.2/', result['download_url'])
+            self.assertEqual(result['source_commit'], '4f16eff34baee504014f56bd8b7148293f85362a')
+            self.assertIn('/releases/download/go1.27.2-hmos.3/', result['download_url'])
 
     def test_workflow_uses_real_setup_go_custom_input(self):
         workflow = (ROOT / '.github/workflows/linux-sdk.yml').read_text()

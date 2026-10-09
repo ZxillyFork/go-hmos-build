@@ -37,6 +37,16 @@ func main() { fmt.Println(runtime.GOOS, runtime.GOARCH) }
 GO
 go build -trimpath -tags=timetzdata -o "$work/hello" "$work/main.go"
 test "$("$work/hello")" = 'linux amd64'
+for arch in arm64 amd64; do
+  GOOS=openharmony GOARCH="$arch" CGO_ENABLED=0 CC=/nonexistent go build net time crypto/x509 os/user
+  GOOS=openharmony GOARCH="$arch" CGO_ENABLED=0 CC=/nonexistent go build -trimpath -o "$work/standalone-$arch" "$work/main.go"
+  readelf -h -l -d "$work/standalone-$arch" > "$work/standalone-$arch.elf.txt"
+  grep -Eq 'Type:.*EXEC' "$work/standalone-$arch.elf.txt"
+  if grep -Eq 'INTERP|DYNAMIC|NEEDED' "$work/standalone-$arch.elf.txt"; then
+    echo "unexpected standalone dynamic dependency: $arch" >&2; exit 1
+  fi
+  go version -m "$work/standalone-$arch" | grep -F 'CGO_ENABLED=0'
+done
 if [[ -n ${OHOS_NDK_HOME:-} ]]; then
   ndk=$(cd "$OHOS_NDK_HOME" && pwd)
   export OHOS_NDK_HOME="$ndk"

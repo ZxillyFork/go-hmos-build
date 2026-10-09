@@ -82,8 +82,9 @@ def main():
         data = manifest(Path(sys.argv[2]))
         print(f'''# Go-HMOS Linux SDK {release["release_tag"]}
 
-Experimental Linux/amd64-hosted Go toolchain. Supports cross-compilation for
-OpenHarmony/HarmonyOS amd64 and arm64 with a separately obtained native SDK.
+Experimental Linux/amd64-hosted Go toolchain for OpenHarmony/HarmonyOS amd64
+and arm64. Pure Go CLI programs build with `CGO_ENABLED=0` without libc or a
+native SDK. cgo and shared libraries require a separately obtained native SDK.
 No Huawei proprietary SDK or emulator package is included.
 
 - Core: https://github.com/{source["repository"]}/commit/{source["revision"]}

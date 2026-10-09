@@ -4,15 +4,15 @@
 `openharmony/arm64` 和 `openharmony/amd64`。它不是能在鸿蒙设备上运行的
 Go 主机安装包，也不包含 Huawei 商业 SDK、OpenHarmony native SDK、模拟器或凭据。
 
-当前版本化 prerelease：`go1.27.2-hmos.2`。编译器自身版本保持
+当前版本化 prerelease：`go1.27.2-hmos.3`。编译器自身版本保持
 `go1.27.2-hmos-devel`。核心固定到 `hmos-release-branch.go1.27` 的提交
-[`b34856b9da6b50b98c7765b3408c3d097b50867c`](https://github.com/ZxillyFork/go-hmos/commit/b34856b9da6b50b98c7765b3408c3d097b50867c)。
+[`4f16eff34baee504014f56bd8b7148293f85362a`](https://github.com/ZxillyFork/go-hmos/commit/4f16eff34baee504014f56bd8b7148293f85362a)。
 此版本加入异步抢占及抢占信号发送失败后的重试。归档摘要和构建记录见
 release 中的 `sdk-manifest.json`；发布工作流通过后提供下载。
 
 ## 发布文件
 
-[版本化 release](https://github.com/ZxillyFork/go-hmos-build/releases/tag/go1.27.2-hmos.2)
+[版本化 release](https://github.com/ZxillyFork/go-hmos-build/releases/tag/go1.27.2-hmos.3)
 包含：
 
 - `go1.27.2-hmos-devel.linux-amd64.tar.gz`：单一顶层 `go/`，包含 `bin/go`、
@@ -40,14 +40,14 @@ steps:
   - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
     with:
       go-version: '1.27.2-hmos-devel'
-      go-download-base-url: 'https://github.com/ZxillyFork/go-hmos-build/releases/download/go1.27.2-hmos.2'
+      go-download-base-url: 'https://github.com/ZxillyFork/go-hmos-build/releases/download/go1.27.2-hmos.3'
       token: ''
       cache: false
   - name: Verify fork identity
     shell: bash
     run: |
       test "$(go env GOVERSION)" = go1.27.2-hmos-devel
-      test "$(cat "$(go env GOROOT)/core-revision.txt")" = b34856b9da6b50b98c7765b3408c3d097b50867c
+      test "$(cat "$(go env GOROOT)/core-revision.txt")" = 4f16eff34baee504014f56bd8b7148293f85362a
       go tool dist list | grep -Fx openharmony/arm64
 ```
 
@@ -66,7 +66,7 @@ setup-go 没有 SHA-256 输入。需要锁定字节的消费端应在仓库中�
 选中工具链与已验证归档里的 `bin/go`、`pkg/tool/linux_amd64/compile` 等文件：
 
 ```sh
-base=https://github.com/ZxillyFork/go-hmos-build/releases/download/go1.27.2-hmos.2
+base=https://github.com/ZxillyFork/go-hmos-build/releases/download/go1.27.2-hmos.3
 archive=go1.27.2-hmos-devel.linux-amd64.tar.gz
 curl --proto '=https' --proto-redir '=https' --fail --location "$base/$archive" -o "$archive"
 # EXPECTED_SHA256 必须是审阅后固定在消费仓库的实际摘要。
@@ -81,8 +81,15 @@ done
 
 ## 目标交叉编译
 
-Go 工具链本身无需 native SDK 即可运行，但鸿蒙目标使用 libc 和 cgo，最终链接
-必须使用另行取得的匹配 SDK。仓库 `scripts/download-sdk.sh` 可下载公开
+纯 Go CLI 不需要 native SDK 或 libc，可以直接构建静态可执行文件：
+
+```sh
+GOOS=openharmony GOARCH=arm64 CGO_ENABLED=0 go build -o app .
+```
+
+`amd64` 同样支持。DNS、默认时区和网卡信息会读取鸿蒙系统配置。
+使用 cgo 或生成供 HAP 加载的共享库时，需要另行取得匹配的 native SDK。
+仓库 `scripts/download-sdk.sh` 可下载公开
 OpenHarmony 6.1 SDK并校验其官方摘要；它不接受 Huawei 商业条款。
 应用使用哪个 SDK/API，应由应用构建要求决定。
 
@@ -102,7 +109,7 @@ go build -trimpath -buildmode=pie -o app .
 ```
 
 C++ 依赖还需等价的 `CXX` 包装器，调用同 SDK 的 `clang++`。
-不要将 `GOOS=linux` 或 `CGO_ENABLED=0` 作为鸿蒙构建的替代。
+目标系统应使用 `GOOS=openharmony`。
 若产物是 CLI，HDC shell 的网络限制仍可能使它不能联网；普通 HAP 的网络测试
 不能证明 shell CLI 在任意设备上可联网。详细差异见 [VALIDATION.md](../VALIDATION.md)。
 
@@ -113,7 +120,7 @@ C++ 依赖还需等价的 `CXX` 包装器，调用同 SDK 的 `clang++`。
 1. 校验精确核心 SHA，使用官方 Go 1.27.2 自举并执行既有 host、安全和目标代码生成回归。
 2. 打包到标准布局，生成 SHA-256、来源记录；归档排除 VCS、native SDK 和凭据。
 3. 在本地只读 HTTP 端点提供候选包，由真正的官方 setup-go 加载。
-4. 检查 fork 版本和来源，编译两种目标 runtime，使用公开 native SDK 对两种目标
+4. 检查 fork 版本和来源，验证两种架构的静态 CLI 无动态依赖，使用公开 native SDK 对两种目标
    构建 PIE/c-shared 并检查架构、解释器和 TLS 重定位。
 5. 仅上述检查成功后，以最小 `contents: write` 权限新建 prerelease。
    不覆盖既有 release，不改动核心仓库或官方 release branch。
