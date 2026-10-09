@@ -30,7 +30,7 @@ import (
 const operationTimeout = 3 * time.Second
 const checkTimeout = 5 * time.Second
 
-const coreRevision = "129dd94577dbfc130e921acd417d551e5586e82a"
+const coreRevision = "4f16eff34baee504014f56bd8b7148293f85362a"
 
 type processIdentity struct {
 	PID int `json:"pid"`

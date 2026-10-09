@@ -4,15 +4,28 @@ package main
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <stdint.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/un.h>
 #include <time.h>
+#include <unistd.h>
 struct system_dns_config { int32_t error, timeout; uint32_t retry, nonpublic; char servers[5][51]; };
 static int system_dns(struct system_dns_config *out) {
-    void *lib = dlopen("libnetsys_client.z.so", RTLD_NOW);
-    if (!lib) return -1;
-    int32_t (*getconfig)(uint16_t, struct system_dns_config *) = dlsym(lib, "NetSysGetResolvConf");
-    int ret = getconfig ? getconfig(0, out) : -1;
-    dlclose(lib);
-    return ret;
+    int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    if (fd < 0) return -errno;
+    struct timeval timeout = {3, 0};
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    struct sockaddr_un address = {.sun_family = AF_UNIX};
+    strcpy(address.sun_path, "/dev/unix/socket/dnsproxyd");
+    int ret = connect(fd, (struct sockaddr *)&address, sizeof(address));
+    uint32_t request[3] = {(uint32_t)getuid(), 1, 0};
+    if (!ret && send(fd, request, sizeof(request), 0) != sizeof(request)) ret = -1;
+    if (!ret && recv(fd, out, sizeof(*out), MSG_WAITALL) != sizeof(*out)) ret = -1;
+    if (ret) ret = -errno;
+    close(fd);
+    return ret ? ret : out->error;
 }
 static long system_offset(void) {
     time_t epoch = 1700000000;
@@ -39,9 +52,7 @@ import (
 func goSystemDNS() checkResult {
 	r := newResult("go.system_dns", "go-netgo", "NetSys configuration and public DNS lookup")
 	var native C.struct_system_dns_config
-	if result := C.system_dns(&native); result != 0 {
-		return failure(r, "native NetSys configuration", fmt.Errorf("status %d, service error %d", result, native.error))
-	}
+	status := C.system_dns(&native)
 	var expected, got []string
 	for i := range native.servers {
 		if addr := C.GoString(&native.servers[i][0]); addr != "" {
@@ -59,7 +70,10 @@ func goSystemDNS() checkResult {
 	slices.Sort(got)
 	got = slices.Compact(got)
 	slices.Sort(expected)
-	r.Details = map[string]any{"native_servers": expected, "go_servers": got}
+	r.Details = map[string]any{"native_servers": expected, "go_servers": got, "native_status": int(status), "native_service_error": int(native.error)}
+	if status != 0 {
+		return failure(r, "native NetSys configuration", fmt.Errorf("status %d, service error %d", status, native.error))
+	}
 	if len(got) == 0 || !reflect.DeepEqual(got, expected) {
 		return failure(r, "DNS configuration", fmt.Errorf("Go %v, NetSys %v", got, expected))
 	}

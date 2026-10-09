@@ -50,7 +50,7 @@ def extract_report(text, token):
 
 
 def validate_report(report):
-    if report.get("schema_version") != 1 or report.get("core_revision") != "129dd94577dbfc130e921acd417d551e5586e82a":
+    if report.get("schema_version") != 1 or report.get("core_revision") != "4f16eff34baee504014f56bd8b7148293f85362a":
         raise Failure("unexpected app schema or core revision")
     identity = report.get("identity", {})
     if identity.get("goos") != "openharmony" or identity.get("goarch") != "amd64":

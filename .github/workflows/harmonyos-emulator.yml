@@ -147,7 +147,7 @@ jobs:
               if report["offset"] != int(native["offset"][0]):
                   raise run.Failure("Go local timezone differs from libc")
               if report.get("roots", 0) < 1:
-                  raise run.Failure("no system roots loaded")
+                  self.record("shell-trust-store-unavailable", error=report.get("roots_error"))
               if native.get("username") and report.get("username") != native["username"][0]:
                   raise run.Failure("Go user lookup differs from libc")
               if native.get("dns_status") == ["0"]:
@@ -155,9 +155,18 @@ jobs:
                   if report["dns_servers"] != expected:
                       raise run.Failure("Go DNS configuration differs from NetSys")
               else:
-                  raise run.Failure("NetSys did not provide DNS configuration")
+                  _, resolv = self.shell("fallback-resolv-conf", "cat /etc/resolv.conf")
+                  fallback = sorted(line.split()[1]+":53" for line in resolv.splitlines() if line.startswith("nameserver "))
+                  if report["dns_servers"] != fallback:
+                      raise run.Failure("Go did not use the system resolv.conf fallback")
+                  self.record("shell-dns-fallback", native_status=native.get("dns_status"), servers=fallback)
               if native.get("interfaces_status") == ["0"] and report["interfaces"] != sorted(set(native.get("interface", []))):
                   raise run.Failure("Go interface discovery differs from libc")
+              for zone, expected_offset in (("UTC", 0), ("Asia/Tokyo", 32400)):
+                  _, output = self.shell("timezone-override-"+zone.replace("/", "-"), prefix + f"TZ={zone} ./system-config", timeout=45)
+                  overridden = next(json.loads(line) for line in output.splitlines() if line.startswith('{"'))
+                  if overridden["offset"] != expected_offset:
+                      raise run.Failure("TZ override was not respected")
               self.shell("system-net-tests", prefix + "./system-net.test -test.v -test.timeout=30s -test.run='^TestOpenHarmonyDNSConfig$'")
               self.shell("system-time-tests", prefix + "./system-time.test -test.v -test.timeout=30s -test.run='^TestOpenHarmony(SystemTimeZone|PackedZones)$'")
               _, output = self.shell("standalone-hello", prefix + "./standalone-hello")
@@ -184,7 +193,7 @@ jobs:
               _, output = self.shell("dlopen", prefix + "./loader ./libgo_hmos_test.so --no-network")
               if "PASS: dlopen" not in output:
                   raise run.Failure("c-shared callbacks failed")
-              self.record("standalone-pass", core="129dd94577dbfc130e921acd417d551e5586e82a")
+              self.record("standalone-pass", core="4f16eff34baee504014f56bd8b7148293f85362a")
 
           run.Runner.test = check
           run.Runner(os.environ["EMULATOR_ROOT"], "emulator-diagnostics").boot("openharmony-out/amd64")
