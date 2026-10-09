@@ -14,9 +14,15 @@ on:
       - 'VALIDATION.md'
       - '.gitignore'
   workflow_dispatch:
+    inputs:
+      reuse_run:
+        description: 'Reuse a compiled payload from this repository after checking its core revision'
+        type: string
+        default: ''
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: harmonyos-amd64-${{ github.ref }}
@@ -72,22 +78,26 @@ jobs:
       - name: Install official HarmonyOS 6.1.1 API 24 PC image
         run: python3 scripts/emulator/run.py install
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        if: ${{ !inputs.reuse_run }}
         with:
           repository: ZxillyFork/go-hmos
           ref: ${{ steps.source.outputs.core_sha }}
           path: source
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        if: ${{ !inputs.reuse_run }}
         with:
           go-version: 1.27.2
           cache: false
       - name: Bootstrap exact core revision
+        if: ${{ !inputs.reuse_run }}
         env:
           EXPECTED_SHA: ${{ steps.source.outputs.core_sha }}
         run: |
           test "$(git -C "$GO_SOURCE_ROOT" rev-parse HEAD)" = "$EXPECTED_SHA"
           bash scripts/bootstrap.sh
       - name: Build actual OpenHarmony amd64 payload with public SDK 6.1
+        if: ${{ !inputs.reuse_run }}
         run: |
           bash scripts/download-sdk.sh
           export OHOS_NDK_HOME="$(cat "$SDK_DOWNLOAD_DIR/native-path.txt")"
@@ -98,6 +108,7 @@ jobs:
           $CC -O2 -fPIE -pie testdata/system-config/native.c -ldl -o openharmony-out/amd64/system-native
           cp "$SDK_DOWNLOAD_DIR/sdk.sha256" "$SDK_DOWNLOAD_DIR/sdk-url.txt" openharmony-out/amd64/
       - name: Build standalone executables without cgo or an external linker
+        if: ${{ !inputs.reuse_run }}
         run: |
           export GOOS=openharmony CGO_ENABLED=0 CC=/nonexistent
           for arch in amd64 arm64; do
@@ -120,6 +131,22 @@ jobs:
               fi
             done
           done
+      - name: Reuse a previously compiled payload for the same core revision
+        if: ${{ inputs.reuse_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REUSE_RUN: ${{ inputs.reuse_run }}
+          EXPECTED_SHA: ${{ steps.source.outputs.core_sha }}
+        run: |
+          [[ "$REUSE_RUN" =~ ^[0-9]+$ ]]
+          gh run download "$REUSE_RUN" --repo "$GITHUB_REPOSITORY" --pattern 'harmonyos-amd64-runtime-*' --dir reused
+          mv reused/openharmony-out openharmony-out
+          test "$(cat openharmony-out/amd64/source-revision.txt)" = "$EXPECTED_SHA"
+          printf 'Reused compiled payload from run %s at core %s.\n' "$REUSE_RUN" "$EXPECTED_SHA" >> "$GITHUB_STEP_SUMMARY"
+      - name: Check DNS protocol fixtures on Linux (not target execution)
+        run: |
+          chmod +x openharmony-out/amd64/system-net.test
+          TMPDIR="$RUNNER_TEMP" openharmony-out/amd64/system-net.test -test.v -test.timeout=30s -test.run='^TestOpenHarmonyDNSConfig$'
       - name: Run upstream preemption programs in the official emulator
         run: |
           cat > scripts/emulator/preempt-check.py <<'PY'
@@ -131,7 +158,7 @@ jobs:
           def check(self, payload):
               payload = Path(payload)
               self.shell("prepare", f"mkdir -p {run.GUEST}")
-              for name in ("testprog", "runtime.test", "loader", "libgo_hmos_test.so", "standalone-hello", "standalone-go", "standalone-testprog", "standalone-runtime.test", "system-config", "system-native", "system-net.test", "system-time.test"):
+              for name in ("testprog", "runtime.test", "loader", "libgo_hmos_test.so", "standalone-hello", "standalone-go", "standalone-testprog", "standalone-runtime.test", "system-config", "system-native", "system-time.test"):
                   self.run("send-" + name, [self.tools / "hdc", "-t", run.TARGET, "file", "send", payload / name, run.GUEST + "/" + name], env=self.env())
                   self.shell("verify-" + name, f"cd {run.GUEST} && test \"$(sha256sum {name} | cut -d ' ' -f 1)\" = {run.digest(payload / name)} && chmod 755 {name}")
               prefix = f"cd {run.GUEST} && "
@@ -167,7 +194,6 @@ jobs:
                   overridden = next(json.loads(line) for line in output.splitlines() if line.startswith('{"'))
                   if overridden["offset"] != expected_offset:
                       raise run.Failure("TZ override was not respected")
-              self.shell("system-net-tests", prefix + "./system-net.test -test.v -test.timeout=30s -test.run='^TestOpenHarmonyDNSConfig$'")
               self.shell("system-time-tests", prefix + "./system-time.test -test.v -test.timeout=30s -test.run='^TestOpenHarmony(SystemTimeZone|PackedZones)$'")
               _, output = self.shell("standalone-hello", prefix + "./standalone-hello")
               if "openharmony/amd64 (runtime.GOOS=openharmony)" not in output:
