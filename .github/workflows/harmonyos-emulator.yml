@@ -96,6 +96,26 @@ jobs:
           export CC="$OHOS_NDK_HOME/llvm/bin/clang --target=x86_64-linux-ohos --sysroot=$OHOS_NDK_HOME/sysroot"
           (cd "$GO_SOURCE_ROOT/src/runtime/testdata/testprog" && "$GO_SOURCE_ROOT/bin/go" build -o "$GITHUB_WORKSPACE/openharmony-out/amd64/testprog" .)
           cp "$SDK_DOWNLOAD_DIR/sdk.sha256" "$SDK_DOWNLOAD_DIR/sdk-url.txt" openharmony-out/amd64/
+      - name: Build standalone executables without cgo or an external linker
+        run: |
+          export GOOS=openharmony CGO_ENABLED=0 CC=/nonexistent
+          for arch in amd64 arm64; do
+            export GOARCH="$arch"
+            out="$GITHUB_WORKSPACE/openharmony-out/$arch"
+            mkdir -p "$out"
+            "$GO_SOURCE_ROOT/bin/go" build -o "$out/standalone-hello" "$GO_SOURCE_ROOT/src/cmd/cgo/internal/testcshared/testdata/openharmony/hello/main.go"
+            "$GO_SOURCE_ROOT/bin/go" build -o "$out/standalone-go" cmd/go
+            (cd "$GO_SOURCE_ROOT/src/runtime/testdata/testprog" && "$GO_SOURCE_ROOT/bin/go" build -o "$out/standalone-testprog" .)
+            "$GO_SOURCE_ROOT/bin/go" test -c -o "$out/standalone-runtime.test" runtime
+            for name in standalone-hello standalone-go standalone-testprog standalone-runtime.test; do
+              readelf -h -l -d "$out/$name" > "$out/$name.elf.txt"
+              grep -Eq 'Type:.*EXEC' "$out/$name.elf.txt"
+              if grep -Eq 'INTERP|DYNAMIC|NEEDED' "$out/$name.elf.txt"; then
+                echo "Unexpected dynamic dependency: $arch/$name" >&2
+                exit 1
+              fi
+            done
+          done
       - name: Run upstream preemption programs in the official emulator
         run: |
           cat > scripts/emulator/preempt-check.py <<'PY'
@@ -106,28 +126,35 @@ jobs:
           def check(self, payload):
               payload = Path(payload)
               self.shell("prepare", f"mkdir -p {run.GUEST}")
-              for name in ("testprog", "runtime.test", "loader", "libgo_hmos_test.so"):
+              for name in ("testprog", "runtime.test", "loader", "libgo_hmos_test.so", "standalone-hello", "standalone-go", "standalone-testprog", "standalone-runtime.test"):
                   self.run("send-" + name, [self.tools / "hdc", "-t", run.TARGET, "file", "send", payload / name, run.GUEST + "/" + name], env=self.env())
                   self.shell("verify-" + name, f"cd {run.GUEST} && test \"$(sha256sum {name} | cut -d ' ' -f 1)\" = {run.digest(payload / name)} && chmod 755 {name}")
               prefix = f"cd {run.GUEST} && "
-              code, output = self.shell("disabled-control", prefix + "GODEBUG=asyncpreemptoff=1 timeout -s KILL 5 ./testprog AsyncPreempt", check=False)
-              if code not in (124, 137) or "OK" in output:
-                  raise run.Failure("disabled preemption did not time out")
-              for i in range(10):
-                  _, output = self.shell(f"async-preempt-{i}", prefix + "timeout -s KILL 30 ./testprog AsyncPreempt")
-                  if "OK" not in output.splitlines():
-                      raise run.Failure("AsyncPreempt did not complete")
-              for program in ("GCFairness", "GCFairness2"):
-                  _, output = self.shell(program, prefix + f"timeout -s KILL 30 ./testprog {program}")
-                  if "OK" not in output.splitlines():
-                      raise run.Failure(program + " did not complete")
-              _, output = self.shell("runtime-policy", prefix + "./runtime.test -test.v -test.timeout=60s -test.run='^(TestPreemption|TestOpenHarmonyRuntimePolicy)$'")
-              if "PASS" not in output.splitlines() or "--- SKIP" in output:
-                  raise run.Failure("runtime tests did not pass")
+              _, output = self.shell("standalone-hello", prefix + "./standalone-hello")
+              if "openharmony/amd64 (runtime.GOOS=openharmony)" not in output:
+                  raise run.Failure("standalone executable has the wrong identity")
+              _, output = self.shell("standalone-go", prefix + f"GOROOT={run.GUEST} ./standalone-go version")
+              if "go version go1.27.2-hmos-devel openharmony/amd64" not in output:
+                  raise run.Failure("standalone Go command did not start")
+              for variant in ("", "standalone-"):
+                  code, output = self.shell(variant + "disabled-control", prefix + f"GODEBUG=asyncpreemptoff=1 timeout -s KILL 5 ./{variant}testprog AsyncPreempt", check=False)
+                  if code not in (124, 137) or "OK" in output:
+                      raise run.Failure(variant + "disabled preemption did not time out")
+                  for i in range(10):
+                      _, output = self.shell(f"{variant}async-preempt-{i}", prefix + f"timeout -s KILL 30 ./{variant}testprog AsyncPreempt")
+                      if "OK" not in output.splitlines():
+                          raise run.Failure(variant + "AsyncPreempt did not complete")
+                  for program in ("GCFairness", "GCFairness2"):
+                      _, output = self.shell(variant + program, prefix + f"timeout -s KILL 30 ./{variant}testprog {program}")
+                      if "OK" not in output.splitlines():
+                          raise run.Failure(variant + program + " did not complete")
+                  _, output = self.shell(variant + "runtime-policy", prefix + f"./{variant}runtime.test -test.v -test.timeout=60s -test.run='^(TestPreemption|TestOpenHarmonyRuntimePolicy|TestOpenHarmonySynchronousFault|TestOpenHarmonyMadvDontNeedDefault)$'")
+                  if "PASS" not in output.splitlines() or "--- SKIP" in output:
+                      raise run.Failure(variant + "runtime tests did not pass")
               _, output = self.shell("dlopen", prefix + "./loader ./libgo_hmos_test.so --no-network")
               if "PASS: dlopen" not in output:
                   raise run.Failure("c-shared callbacks failed")
-              self.record("preemption-pass", core="4134e2602366a075600a1f24c86ee6677ad40c3b")
+              self.record("standalone-pass", core="16f669dbd14ef195be75780974a26195ac168ec9")
 
           run.Runner.test = check
           run.Runner(os.environ["EMULATOR_ROOT"], "emulator-diagnostics").boot("openharmony-out/amd64")
@@ -153,5 +180,6 @@ jobs:
           path: |
             emulator-diagnostics/
             openharmony-out/amd64/
+            openharmony-out/arm64/
           if-no-files-found: warn
           retention-days: 7
