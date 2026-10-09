@@ -9,8 +9,9 @@ Go 核心仓库只保留移植代码、测试和平台文档；GitHub Actions、
 设备上运行。** 当前已完成和未完成的验证分别记录在 [VALIDATION.md](VALIDATION.md)。
 官方 x64 模拟器已实际运行 Go hello、runtime/GC/线程/timer、crypto/TLS、cgo
 与两种 dlopen 隔离测试；18 个标准库包的 130 个顶层用例通过，1 个显式 short-mode
-跳过。完整 CI 仍因 HDC shell 的网络限制失败，同操作原生 C 对照也被拒绝。
-这不等于应用上下文网络已验证。见[模拟器实测记录](VALIDATION.md#official-x64-emulator-runtime-validation)。
+跳过。旧 HDC shell 流程仍因网络限制失败，同操作原生 C 对照也被拒绝。
+独立的普通 debug HAP 流程已通过全部 20 项检查，包括同进程 C/Go 网络对照；
+release 应用、外网/DNS、真机与 ARM 仍未验证。见[应用进程实测记录](VALIDATION.md#normal-app-process-network-validation)。
 
 目标平台限制见核心仓库的
 [平台说明](https://github.com/ZxillyFork/go-hmos/blob/b637b8617624655906b737977f50de5280bf7f65/doc/openharmony.md)。
@@ -131,23 +132,23 @@ python3 -m unittest discover -s tests -v
 
 ## 真实设备验证
 
-### 正常应用进程网络实验（构建、安装通过，启动仍受阻）
+### 正常 debug 应用进程网络实验（20 项通过）
 
 新增 `HarmonyOS x64 app network` 工作流：在相同官方 x64/API 24 模拟器中，
-通过标准 `hdc install` / `aa start` 安装并尝试启动一个 debug HAP。它只声明
+通过标准 `hdc install` / `aa start` 安装并启动一个 debug HAP。它只声明
 `ohos.permission.INTERNET`，使用普通应用 UID，在同一进程比较原生 C 与 Go。
 N-API 包装异步加载一个 Go c-shared 库；库中保留固定核心的原始 smoke fixture，
 另加 TCP/UDP loopback、相同 socket flags 的 bind / `SO_BROADCAST`、
 `getifaddrs` / `net.Interfaces` / 地址枚举对照。不会把 HDC shell 当作应用进程。
 
-已在 [run 37916270628](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37916270628)
-真实构建并通过普通 `hdc install` 安装 unsigned debug HAP；无需新签名密钥或账户。
-`aa start` 报屏幕锁定（10106102）。Xvfb/Mesa 已解决此前 host EGL 配置失败，
-但本次截图仍为纯黑、控件树未就绪，日志显示桌面还在初始化。
-**应用内 Go/C 网络检查尚未执行，不能报告通过或权限结论。**
-当前增加有界的只读 UI 就绪等待，不调整 guest 安全策略或注入按键。
-原有 shell 测试的失败仍保留。
-详细范围及后续精确提交结果见
+**[run 37919648808](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37919648808)
+完整成功**，测试提交 `e3a7623d3f885ae59e2ab3fde9bea2aa936dc202`。
+真实 unsigned debug HAP 中，Go runtime 身份、原始 `GoCheck`、C/Go TCP/UDP
+loopback、bind、`SO_BROADCAST`、接口及地址对照共 20 项全部通过。
+同一 app PID/UID 已由 `/proc` 核实，仅声明 INTERNET；无需新签名密钥或账户。
+Xvfb/Mesa 加只读 UI 就绪等待解决了之前的图形/过早启动问题，没有注入按键或修改安全策略。
+实测域为 `u:r:debug_hap:s0`；不外推 release HAP、真实设备、ARM、外网/DNS 或完整 Go 测试。
+旧 HDC shell 的权限失败仍保留，详见
 [应用进程验证记录](VALIDATION.md#normal-app-process-network-validation)。
 
 ### 官方 x64 模拟器实验
@@ -179,7 +180,7 @@ CLI 的来源线索参考了 [cjv 的实验分支](https://github.com/Zxilly/cjv
 华为 SDK、CLI 和系统镜像。工件仅包含测试程序及诊断；脚本单元测试也不计作
 目标系统执行。最新实际结果以精确提交的 Actions 日志及 `VALIDATION.md` 为准。
 
-真机、签名 HAP/N-API 集成、生命周期、网络策略、
+真机、release 签名 HAP、完整生命周期、release 网络策略、
 证书服务、时区同步和内存压力等仍需单独验证。运行时应记录 OS/API/SDK/CPU、
 核心提交、命令、退出码和日志；编译通过、未运行和运行失败必须分别报告。
 详见 [验证记录](VALIDATION.md) 与核心平台文档。

@@ -2,17 +2,16 @@
 
 This record distinguishes compilation, Linux-host ABI simulation, and real
 OpenHarmony execution. The official x64 emulator has now executed the pinned
-Go runtime and focused tests. **The full emulator workflow remains failing:
-network checks are denied in the HDC shell context.** The port remains
-experimental; this is not physical-device certification, a complete Go test
-suite, or validation of networking in an application context. Historical
+Go runtime and focused tests. **The normal debug-HAP workflow passed all 20
+app-process checks. The separate HDC-shell workflow remains failing because
+network operations are denied in that context.** The port remains experimental;
+this is not physical-device/release certification or a complete Go test suite. Historical
 results below apply only to their stated exact source revisions.
 
 
 ## Normal app-process network validation
 
-**Status: actual HAP build, packed validation and ordinary unsigned installation
-passed; ability launch is blocked, so app-process network tests remain unexecuted.**
+**Result: complete workflow SUCCESS; 20/20 app-process checks passed, none skipped.**
 This is a separate experiment from the completed, failing HDC-shell test below.
 The core pin remains `b637b8617624655906b737977f50de5280bf7f65`; no core change,
 merge, release, physical device or ARM execution is part of this experiment.
@@ -24,6 +23,54 @@ byte-for-byte pinned core `GoCheck` fixture and new same-process native C and Go
 network controls. The build compares the fixture with the actual checked-out
 core before compiling. It does not load two independent Go runtimes into one
 process.
+
+### Exact successful run and evidence
+
+- [GitHub Actions run 37919648808](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37919648808),
+  job `113784222807`, completed **success** on 2026-10-09 (10m04s).
+- Tested build revision: `e3a7623d3f885ae59e2ab3fde9bea2aa936dc202`.
+  Later documentation-only commits do not represent additional target runs.
+- Unchanged core: `b637b8617624655906b737977f50de5280bf7f65`.
+  Actual runtime: `go1.27.2-hmos-devel`, `GOOS=openharmony`, `GOARCH=amd64`.
+- Official guest: OpenHarmony 6.1.1.125, API24, x86_64. Normal app bundle:
+  `org.gohmos.networktest`; PID `3364`, UID/GID `20020049`.
+  All C/Go rows report this same process; `/proc/3364/status` and cmdline
+  independently match. Its actual SELinux context is `u:r:debug_hap:s0`,
+  with effective capabilities zero. This is a **debug-app** result, not proof
+  that a release-app security domain has the same access.
+- Packed HAP is unsigned debug, declares only `ohos.permission.INTERNET`,
+  and contains the two expected x86_64 libraries. SHA-256:
+  `34a54ba4a9f03f37f9781508a82bcb09c5736b53353152713c02cea9e9592fed`.
+- The [unaltered app report](validation/app-network-37919648808.json) is retained
+  in this repository. SHA-256:
+  `5e72f7dba44ce30e938b8b62e59e4d9576b9e2b2006ef1e8dab194ef11e08c5e`.
+  Full HAP, packed permissions, process evidence, token-bearing hilog,
+  screenshots and emulator logs are in the run's seven-day artifact.
+
+| App-process checks | Result |
+| --- | --- |
+| Actual Go identity and pinned core `GoCheck(41)` | 2/2 PASS |
+| C and Go raw TCP/UDP bind and UDP `SO_BROADCAST` | 6/6 PASS |
+| C and Go TCP/UDP bidirectional IPv4 loopback exchange | 4/4 PASS |
+| C `getifaddrs` and Go `net.Interfaces` | 2/2 PASS |
+| Go addresses for lo, eth0, wifi_eth, sit0, wlan0 | 5/5 PASS |
+| Canonical C/Go interface/address comparison | 1/1 PASS |
+
+All rows have errno zero, no timeout and no failure. Five interfaces and nine
+IPv4/IPv6 address/prefix entries matched; `sit0` correctly has no address.
+Native IFF flags and Go net.Flags have different bit definitions and are not
+claimed to match numerically. IPv6 **enumeration** passed; socket exchanges
+were IPv4 loopback, not IPv6/public Internet/DNS tests.
+
+The same previously denied shell operations succeeded in this normal debug
+app process. This demonstrates that the earlier failures were context-specific,
+not a general inability of the Go port to perform these operations. It does not
+isolate INTERNET as the only causal difference between shell and debug-app policy.
+
+The successful runner waited for BMS and then independently for UI evidence.
+On its fourth UI attempt, a non-black welcome/clock screen and populated widget
+tree were captured; ordinary `aa start` then succeeded. No Power key, swipe,
+credential, lock/developer-mode/SELinux/network-policy change was needed.
 
 Mandatory checks include:
 
@@ -59,7 +106,7 @@ their stage and errno, and never turn into a successful overall workflow.
   its [build profile documentation](https://developer.huawei.com/consumer/cn/doc/doccenter-deveco-studio/ide-hmos-hvigor-build-profile-app)
   defines omitted signingConfig as unsigned. Ordinary unsigned installation
   succeeded on this exact API24 image in runs 37912008534, 37913592375 and
-  37916270628.
+  37916270628 and the successful run 37919648808.
 - An ordinary `hdc install` signature failure stops the experiment with its
   exact diagnostics. No account login, new signing key/profile, verifier bypass,
   SELinux change, additional app permission or guest root execution is used.
@@ -88,7 +135,7 @@ build revision `84500e6563cea5ef6d44141861d3969817387e1b`, overall **failure**.
   then `Failed to choose EGL config: 0x3000`. This is host graphics initialization
   evidence; it does not prove a password or a Go failure.
 
-The latest completed run is [37916270628](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37916270628),
+The preceding graphics run is [37916270628](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37916270628),
 build revision `5cb80eb3c85314bc9132df5ecccad9903d4bb908`, overall **failure**.
 It again passed all build/validation/ordinary-install stages. The host-only
 Xvfb/Mesa change succeeded in initializing EGL 1.5, a matching EGL configuration
@@ -97,8 +144,8 @@ but visually inspected pixels were entirely black; widget-tree capture still
 failed, and `aa start` still returned 10106102. No app-network report exists.
 The final hilog shows SceneBoard creating desktop/dock/status-bar components
 during teardown. Waiting for BMS alone was insufficient for a normal UI cold boot.
-The next runner revision adds a bounded, read-only UI-readiness wait; no Power
-key, swipe, credential action or guest security change is introduced.
+The successful revision adds a bounded, read-only UI-readiness wait; no Power
+key, swipe, credential action or guest security change was introduced.
 
 Earlier app runs are retained: 37908631884 exposed an overly strict bare-API24
 validator assumption after successful packaging; 37910446087 attempted installation
@@ -202,21 +249,22 @@ or policy relaxation was used to obtain a passing subset.
 ### Remaining validation and next context
 
 Physical ARM devices, full Go/stdlib suites, native toolchain self-bootstrap,
-application lifecycle, signing/HAP/N-API integration, real application
-networking, DNS, system certificate policy and memory-pressure behavior remain
-unverified.
+general application lifecycle, release HAP/signing policy, public Internet/DNS,
+system certificate policy and memory-pressure behavior remain unverified.
+The bounded debug HAP/N-API integration and local app-network checks were
+subsequently validated in the successful experiment above.
 
-A bounded next experiment would be a normal x64 debug HAP with only
+The shell failures motivated the normal x64 debug HAP experiment with only
 [`ohos.permission.INTERNET`](https://github.com/openharmony/docs/blob/master/en/application-dev/security/AccessToken/permissions-for-all.md#ohospermissioninternet)
 (normal, `system_grant`) declared in `module.json5`. A small
 [N-API wrapper](https://github.com/openharmony/docs/blob/master/en/application-dev/napi/use-napi-process.md)
-would load the existing Go shared library in the actual app process and repeat
+loads the pinned Go shared library in the actual app process and repeats
 matched native C/Go network probes. An HDC shell launched from an app directory
 is not equivalent to that application context. INTERNET does **not** guarantee
 that every NETLINK_ROUTE operation or `getifaddrs` will be allowed.
 
-The subsequent bounded app experiment is recorded above: real build and ordinary
-unsigned installation passed, while app startup/network execution remain blocked.
+The subsequent bounded debug-app experiment is recorded above: real build,
+ordinary unsigned installation, app startup and all 20 focused checks passed.
 Account-backed signing, new credentials/profiles or new legal terms are not
 implied by the completed shell test.
 

@@ -1,0 +1,620 @@
+{
+  "schema_version": 1,
+  "overall_pass": true,
+  "core_revision": "b637b8617624655906b737977f50de5280bf7f65",
+  "identity": {
+    "goos": "openharmony",
+    "goarch": "amd64",
+    "version": "go1.27.2-hmos-devel",
+    "pid": 3364,
+    "uid": 20020049,
+    "gid": 20020049
+  },
+  "checks": [
+    {
+      "name": "identity",
+      "implementation": "go-runtime",
+      "operation": "runtime.GOOS/GOARCH",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 0,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      }
+    },
+    {
+      "name": "core.GoCheck",
+      "implementation": "go-runtime",
+      "operation": "pinned c-shared GoCheck(41)",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 531,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      },
+      "details": {
+        "environment_matches": true,
+        "expected_return_code": 0,
+        "return_code": 0
+      }
+    },
+    {
+      "name": "native.raw_tcp_bind",
+      "implementation": "native-libc",
+      "operation": "socket(AF_INET,type|SOCK_NONBLOCK|SOCK_CLOEXEC,0); bind(127.0.0.1:0)",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 15,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      },
+      "details": {
+        "address": "127.0.0.1",
+        "address_family": 2,
+        "port": 0,
+        "protocol": 0,
+        "socket_flags": 526336,
+        "socket_type": 1
+      }
+    },
+    {
+      "name": "go.raw_tcp_bind",
+      "implementation": "go-syscall",
+      "operation": "socket(AF_INET,type|SOCK_NONBLOCK|SOCK_CLOEXEC,0); bind(127.0.0.1:0)",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 0,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      },
+      "details": {
+        "address": "127.0.0.1",
+        "address_family": 2,
+        "port": 0,
+        "protocol": 0,
+        "socket_flags": 526336,
+        "socket_type": 1
+      }
+    },
+    {
+      "name": "native.raw_udp_bind",
+      "implementation": "native-libc",
+      "operation": "socket(AF_INET,type|SOCK_NONBLOCK|SOCK_CLOEXEC,0); bind(127.0.0.1:0)",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 0,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      },
+      "details": {
+        "address": "127.0.0.1",
+        "address_family": 2,
+        "port": 0,
+        "protocol": 0,
+        "socket_flags": 526336,
+        "socket_type": 2
+      }
+    },
+    {
+      "name": "go.raw_udp_bind",
+      "implementation": "go-syscall",
+      "operation": "socket(AF_INET,type|SOCK_NONBLOCK|SOCK_CLOEXEC,0); bind(127.0.0.1:0)",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 0,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      },
+      "details": {
+        "address": "127.0.0.1",
+        "address_family": 2,
+        "port": 0,
+        "protocol": 0,
+        "socket_flags": 526336,
+        "socket_type": 2
+      }
+    },
+    {
+      "name": "native.raw_udp_broadcast",
+      "implementation": "native-libc",
+      "operation": "socket(AF_INET,SOCK_DGRAM|SOCK_NONBLOCK|SOCK_CLOEXEC,0); setsockopt(SOL_SOCKET,SO_BROADCAST,1)",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 0,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      },
+      "details": {
+        "address_family": 2,
+        "level": 1,
+        "option": 6,
+        "protocol": 0,
+        "socket_flags": 526336,
+        "socket_type": 2,
+        "value": 1
+      }
+    },
+    {
+      "name": "go.raw_udp_broadcast",
+      "implementation": "go-syscall",
+      "operation": "socket(AF_INET,SOCK_DGRAM|SOCK_NONBLOCK|SOCK_CLOEXEC,0); setsockopt(SOL_SOCKET,SO_BROADCAST,1)",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 3,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      },
+      "details": {
+        "address_family": 2,
+        "level": 1,
+        "option": 6,
+        "protocol": 0,
+        "socket_flags": 526336,
+        "socket_type": 2,
+        "value": 1
+      }
+    },
+    {
+      "name": "native.tcp_roundtrip",
+      "implementation": "native-libc",
+      "operation": "socket/bind/listen/connect/accept4/send/recv bidirectional loopback exchange",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 1,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      }
+    },
+    {
+      "name": "go.tcp_roundtrip",
+      "implementation": "go-net",
+      "operation": "net.ListenTCP; net.DialTCP via Dialer; AcceptTCP; bidirectional payload exchange",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 15,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      }
+    },
+    {
+      "name": "native.udp_roundtrip",
+      "implementation": "native-libc",
+      "operation": "socket/bind/sendto/recvfrom bidirectional loopback exchange",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 0,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      }
+    },
+    {
+      "name": "go.udp_roundtrip",
+      "implementation": "go-net",
+      "operation": "net.ListenUDP twice; WriteToUDP/ReadFromUDP bidirectional payload exchange",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 0,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      }
+    },
+    {
+      "name": "native.getifaddrs",
+      "implementation": "native-libc",
+      "operation": "getifaddrs",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 6,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      },
+      "interfaces": [
+        {
+          "name": "lo",
+          "family": 17,
+          "prefix_length": -1,
+          "flags": 65609
+        },
+        {
+          "name": "eth0",
+          "family": 17,
+          "prefix_length": -1,
+          "flags": 69699
+        },
+        {
+          "name": "wifi_eth",
+          "family": 17,
+          "prefix_length": -1,
+          "flags": 69699
+        },
+        {
+          "name": "sit0",
+          "family": 17,
+          "prefix_length": -1,
+          "flags": 128
+        },
+        {
+          "name": "wlan0",
+          "family": 17,
+          "prefix_length": -1,
+          "flags": 69635
+        },
+        {
+          "name": "lo",
+          "address": "127.0.0.1",
+          "family": 2,
+          "prefix_length": 8,
+          "flags": 65609
+        },
+        {
+          "name": "eth0",
+          "address": "10.0.2.15",
+          "family": 2,
+          "prefix_length": 24,
+          "flags": 69699
+        },
+        {
+          "name": "lo",
+          "address": "::1",
+          "family": 10,
+          "prefix_length": 128,
+          "flags": 65609
+        },
+        {
+          "name": "eth0",
+          "address": "fec0::504f:bee1:23dc:195",
+          "family": 10,
+          "prefix_length": 64,
+          "flags": 69699
+        },
+        {
+          "name": "eth0",
+          "address": "fec0::5054:ff:fe12:3456",
+          "family": 10,
+          "prefix_length": 64,
+          "flags": 69699
+        },
+        {
+          "name": "eth0",
+          "address": "fe80::5054:ff:fe12:3456",
+          "family": 10,
+          "prefix_length": 64,
+          "flags": 69699
+        },
+        {
+          "name": "wifi_eth",
+          "address": "fec0::5054:ff:fe12:3457",
+          "family": 10,
+          "prefix_length": 64,
+          "flags": 69699
+        },
+        {
+          "name": "wifi_eth",
+          "address": "fe80::5054:ff:fe12:3457",
+          "family": 10,
+          "prefix_length": 64,
+          "flags": 69699
+        },
+        {
+          "name": "wlan0",
+          "address": "fe80::5054:ff:fe12:3457",
+          "family": 10,
+          "prefix_length": 64,
+          "flags": 69635
+        }
+      ]
+    },
+    {
+      "name": "go.net_interfaces",
+      "implementation": "go-net",
+      "operation": "net.Interfaces",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 0,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      },
+      "interfaces": [
+        {
+          "name": "lo",
+          "family": 0,
+          "prefix_length": -1,
+          "flags": 37
+        },
+        {
+          "name": "eth0",
+          "family": 0,
+          "prefix_length": -1,
+          "flags": 51
+        },
+        {
+          "name": "wifi_eth",
+          "family": 0,
+          "prefix_length": -1,
+          "flags": 51
+        },
+        {
+          "name": "sit0",
+          "family": 0,
+          "prefix_length": -1,
+          "flags": 0
+        },
+        {
+          "name": "wlan0",
+          "family": 0,
+          "prefix_length": -1,
+          "flags": 19
+        }
+      ]
+    },
+    {
+      "name": "go.interface_addrs:lo",
+      "implementation": "go-net",
+      "operation": "net.InterfaceByName; net.Interface.Addrs",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 0,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      },
+      "interfaces": [
+        {
+          "name": "lo",
+          "address": "127.0.0.1",
+          "family": 2,
+          "prefix_length": 8,
+          "flags": 37
+        },
+        {
+          "name": "lo",
+          "address": "::1",
+          "family": 10,
+          "prefix_length": 128,
+          "flags": 37
+        }
+      ]
+    },
+    {
+      "name": "go.interface_addrs:eth0",
+      "implementation": "go-net",
+      "operation": "net.InterfaceByName; net.Interface.Addrs",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 1,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      },
+      "interfaces": [
+        {
+          "name": "eth0",
+          "address": "10.0.2.15",
+          "family": 2,
+          "prefix_length": 24,
+          "flags": 51
+        },
+        {
+          "name": "eth0",
+          "address": "fec0::504f:bee1:23dc:195",
+          "family": 10,
+          "prefix_length": 64,
+          "flags": 51
+        },
+        {
+          "name": "eth0",
+          "address": "fec0::5054:ff:fe12:3456",
+          "family": 10,
+          "prefix_length": 64,
+          "flags": 51
+        },
+        {
+          "name": "eth0",
+          "address": "fe80::5054:ff:fe12:3456",
+          "family": 10,
+          "prefix_length": 64,
+          "flags": 51
+        }
+      ]
+    },
+    {
+      "name": "go.interface_addrs:wifi_eth",
+      "implementation": "go-net",
+      "operation": "net.InterfaceByName; net.Interface.Addrs",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 1,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      },
+      "interfaces": [
+        {
+          "name": "wifi_eth",
+          "address": "fec0::5054:ff:fe12:3457",
+          "family": 10,
+          "prefix_length": 64,
+          "flags": 51
+        },
+        {
+          "name": "wifi_eth",
+          "address": "fe80::5054:ff:fe12:3457",
+          "family": 10,
+          "prefix_length": 64,
+          "flags": 51
+        }
+      ]
+    },
+    {
+      "name": "go.interface_addrs:sit0",
+      "implementation": "go-net",
+      "operation": "net.InterfaceByName; net.Interface.Addrs",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 0,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      }
+    },
+    {
+      "name": "go.interface_addrs:wlan0",
+      "implementation": "go-net",
+      "operation": "net.InterfaceByName; net.Interface.Addrs",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 1,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      },
+      "interfaces": [
+        {
+          "name": "wlan0",
+          "address": "fe80::5054:ff:fe12:3457",
+          "family": 10,
+          "prefix_length": 64,
+          "flags": 19
+        }
+      ]
+    },
+    {
+      "name": "interfaces.addresses_match",
+      "implementation": "comparison",
+      "operation": "compare canonical per-interface IPv4/IPv6 addresses from getifaddrs and net.Interface.Addrs",
+      "stage": "complete",
+      "passed": true,
+      "errno": 0,
+      "error": "",
+      "timed_out": false,
+      "duration_ms": 0,
+      "process": {
+        "pid": 3364,
+        "uid": 20020049,
+        "gid": 20020049
+      },
+      "details": {
+        "go_addresses": [
+          "eth0=10.0.2.15/24",
+          "eth0=fe80::5054:ff:fe12:3456/64",
+          "eth0=fec0::504f:bee1:23dc:195/64",
+          "eth0=fec0::5054:ff:fe12:3456/64",
+          "lo=127.0.0.1/8",
+          "lo=::1/128",
+          "wifi_eth=fe80::5054:ff:fe12:3457/64",
+          "wifi_eth=fec0::5054:ff:fe12:3457/64",
+          "wlan0=fe80::5054:ff:fe12:3457/64"
+        ],
+        "native_addresses": [
+          "eth0=10.0.2.15/24",
+          "eth0=fe80::5054:ff:fe12:3456/64",
+          "eth0=fec0::504f:bee1:23dc:195/64",
+          "eth0=fec0::5054:ff:fe12:3456/64",
+          "lo=127.0.0.1/8",
+          "lo=::1/128",
+          "wifi_eth=fe80::5054:ff:fe12:3457/64",
+          "wifi_eth=fec0::5054:ff:fe12:3457/64",
+          "wlan0=fe80::5054:ff:fe12:3457/64"
+        ],
+        "native_flags_and_go_net_flags_use_different_bit_definitions": true
+      }
+    }
+  ],
+  "failed": [],
+  "notes": [
+    "Exactly one Go c-shared runtime is loaded; native libc checks are called via cgo in this same app process.",
+    "Raw native/go-syscall bind and SO_BROADCAST pairs use identical socket flags and options. Round trips are behavior comparisons; go-net may set additional socket options.",
+    "Interface snapshots are sequential; native IFF_* flags and Go net.Flags are not numerically comparable.",
+    "Each exchange has a 3-second socket deadline and each check a 5-second outer deadline. The external app runner must enforce its own process deadline."
+  ]
+}
