@@ -4,18 +4,15 @@
 `openharmony/arm64` 和 `openharmony/amd64`。它不是能在鸿蒙设备上运行的
 Go 主机安装包，也不包含 Huawei 商业 SDK、OpenHarmony native SDK、模拟器或凭据。
 
-当前版本化 prerelease：`go1.27.2-hmos.1`。编译器自身版本保持
-`go1.27.2-hmos-devel`。核心固定到新分支 `hmos-release-branch.go1.27` 的合并提交
-[`7830d8769fefbe02c3b23d24f3d04bde6a1382da`](https://github.com/ZxillyFork/go-hmos/commit/7830d8769fefbe02c3b23d24f3d04bde6a1382da)。
-首次发布已由 [CI 37922403510](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37922403510)
-完成全部构建、官方 setup-go 加载、两架构链接和发布后下载校验。
-归档 SHA-256：`04b5b24bcee3115be7cda879075c673245cd5655bb13c58261bea07b1bd4c072`。
-[完整验证记录](../validation/linux-sdk-37922403510.json)保留精确 SHA 和验证边界。
-ARM 设备运行、完整标准库通过率、发布版应用与生产就绪均未声明。
+当前版本化 prerelease：`go1.27.2-hmos.2`。编译器自身版本保持
+`go1.27.2-hmos-devel`。核心固定到 `hmos-release-branch.go1.27` 的提交
+[`b34856b9da6b50b98c7765b3408c3d097b50867c`](https://github.com/ZxillyFork/go-hmos/commit/b34856b9da6b50b98c7765b3408c3d097b50867c)。
+此版本加入异步抢占及抢占信号发送失败后的重试。归档摘要和构建记录见
+release 中的 `sdk-manifest.json`；发布工作流通过后提供下载。
 
 ## 发布文件
 
-[版本化 release](https://github.com/ZxillyFork/go-hmos-build/releases/tag/go1.27.2-hmos.1)
+[版本化 release](https://github.com/ZxillyFork/go-hmos-build/releases/tag/go1.27.2-hmos.2)
 包含：
 
 - `go1.27.2-hmos-devel.linux-amd64.tar.gz`：单一顶层 `go/`，包含 `bin/go`、
@@ -43,14 +40,14 @@ steps:
   - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
     with:
       go-version: '1.27.2-hmos-devel'
-      go-download-base-url: 'https://github.com/ZxillyFork/go-hmos-build/releases/download/go1.27.2-hmos.1'
+      go-download-base-url: 'https://github.com/ZxillyFork/go-hmos-build/releases/download/go1.27.2-hmos.2'
       token: ''
       cache: false
   - name: Verify fork identity
     shell: bash
     run: |
       test "$(go env GOVERSION)" = go1.27.2-hmos-devel
-      test "$(cat "$(go env GOROOT)/core-revision.txt")" = 7830d8769fefbe02c3b23d24f3d04bde6a1382da
+      test "$(cat "$(go env GOROOT)/core-revision.txt")" = b34856b9da6b50b98c7765b3408c3d097b50867c
       go tool dist list | grep -Fx openharmony/arm64
 ```
 
@@ -69,7 +66,7 @@ setup-go 没有 SHA-256 输入。需要锁定字节的消费端应在仓库中�
 选中工具链与已验证归档里的 `bin/go`、`pkg/tool/linux_amd64/compile` 等文件：
 
 ```sh
-base=https://github.com/ZxillyFork/go-hmos-build/releases/download/go1.27.2-hmos.1
+base=https://github.com/ZxillyFork/go-hmos-build/releases/download/go1.27.2-hmos.2
 archive=go1.27.2-hmos-devel.linux-amd64.tar.gz
 curl --proto '=https' --proto-redir '=https' --fail --location "$base/$archive" -o "$archive"
 # EXPECTED_SHA256 必须是审阅后固定在消费仓库的实际摘要。

@@ -1,5 +1,5 @@
 {
-  "release_tag": "go1.27.2-hmos.1",
+  "release_tag": "go1.27.2-hmos.2",
   "go_version": "go1.27.2-hmos-devel",
   "host_os": "linux",
   "host_arch": "amd64",
