@@ -8,3 +8,7 @@ __pycache__/
 *.log
 .sdk/
 emulator-diagnostics/
+
+# Disposable normal-app HAP builds
+.app-build/
+.app-out/

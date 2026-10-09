@@ -158,10 +158,16 @@ class Runner:
             for item in source.infolist():
                 if item.filename.startswith("/") or ".." in Path(item.filename).parts:
                     raise Failure("Unsafe CLI archive member")
-        self.run("extract-cli", ["unzip", "-q", archive, "command-line-tools/emulator/*",
-                 "command-line-tools/sdk/default/openharmony/toolchains/hdc",
-                 "command-line-tools/sdk/default/openharmony/toolchains/libusb_shared.so",
-                 "-d", self.root], timeout=180)
+        members = ["command-line-tools/emulator/*",
+                   "command-line-tools/sdk/default/openharmony/toolchains/hdc",
+                   "command-line-tools/sdk/default/openharmony/toolchains/libusb_shared.so"]
+        if os.environ.get("HARMONYOS_APP_TOOLS") == "1":
+            # Same checksum-pinned archive, now including its regular app-build
+            # tools. No external signing material or account is introduced.
+            members = ["command-line-tools/emulator/*", "command-line-tools/bin/*",
+                       "command-line-tools/hvigor/*", "command-line-tools/ohpm/*",
+                       "command-line-tools/tool/node/*", "command-line-tools/sdk/default/*"]
+        self.run("extract-cli", ["unzip", "-q", archive, *members, "-d", self.root], timeout=300)
         archive.unlink()
         with self.emulator.open("rb") as source:
             header = source.read(20)
@@ -170,7 +176,7 @@ class Runner:
         self.cli("version", "-version")
         self.cli("help", "-help")
 
-    def install(self):
+    def license(self):
         self.phase = "license"
         # This exact checksum was previously accepted in the owner's linked run.
         # Changing the package requires re-reviewing its agreements, not carrying
@@ -191,6 +197,9 @@ class Runner:
         from licenses import verify
         verify(self.emulator.parent, text)
         self.cli("license", "-license", "accept")
+
+    def install(self):
+        self.license()
         self.phase = "image-download"
         self.cli("image-catalog", "-imageList", "-deviceType", "2in1", "-downloaded", "false", timeout=180)
         try:
@@ -378,7 +387,7 @@ class Runner:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("hardware", "download", "install", "test"))
+    parser.add_argument("action", choices=("hardware", "download", "license", "install", "test"))
     parser.add_argument("--root", default=os.environ.get("EMULATOR_ROOT", "/tmp/go-hmos-emulator"))
     parser.add_argument("--logs", default="emulator-diagnostics")
     parser.add_argument("--payload", default="openharmony-out/amd64")

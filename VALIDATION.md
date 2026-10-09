@@ -9,6 +9,63 @@ suite, or validation of networking in an application context. Historical
 results below apply only to their stated exact source revisions.
 
 
+## Normal app-process network validation
+
+**Status: harness prepared; target app execution has not yet been performed.**
+This is a separate experiment from the completed, failing HDC-shell test below.
+The core pin remains `b637b8617624655906b737977f50de5280bf7f65`; no core change,
+merge, release, physical device or ARM execution is part of this experiment.
+
+The new `harmonyos-app-network.yml` workflow builds a normal Stage-model debug
+HAP, `org.gohmos.networktest`, declaring only `ohos.permission.INTERNET`. A
+small N-API worker loads one Go c-shared library. That library includes the
+byte-for-byte pinned core `GoCheck` fixture and new same-process native C and Go
+network controls. The build compares the fixture with the actual checked-out
+core before compiling. It does not load two independent Go runtimes into one
+process.
+
+Mandatory checks include:
+
+- Actual `runtime.GOOS=openharmony`, `GOARCH=amd64`, app UID/PID, exact core pin
+  and the original core `GoCheck` runtime smoke result.
+- Matched raw C/libc and Go/syscall TCP/UDP loopback bind, using identical
+  AF_INET, protocol zero and NONBLOCK/CLOEXEC socket flags.
+- Matched `SOL_SOCKET/SO_BROADCAST=1` setup on a UDP socket.
+- Bidirectional TCP and UDP loopback payload exchange. These are behavioral
+  comparisons, not claims that the higher-level Go and C syscall sequences are
+  identical.
+- Native `getifaddrs`, Go `net.Interfaces`, per-interface addresses and address
+  inventory comparison. INTERNET may still be insufficient for every operation;
+  matched denials must be reported rather than skipped or granted more rights.
+
+The runner checks the *packed* HAP's permission list, minimum API, debug flag
+and x86_64 ELF library set. After normal ability launch, fresh random-token
+hilog chunks carry a structured report; truncated, stale, missing and
+inconsistent reports fail. Each test has a deadline, with a separate 180-second
+host deadline. `/proc` identity must match the app report. Failed checks preserve
+their stage and errno, and never turn into a successful overall workflow.
+
+### Build and signing scope
+
+- Same checksum-pinned official CLI 26.0.0.821 and reverified previously
+  accepted agreements as the shell experiment. App building now uses its
+  bundled HarmonyOS 26.0.0 ArkTS tools, with target/minimum `6.1.1(24)`.
+- Native C and Go still cross-compile with the separate public OpenHarmony
+  6.1/API23 SDK, and execution still targets the official API24 x64 image.
+- No `signingConfig` is configured. Huawei's
+  [introduction](https://developer.huawei.com/consumer/cn/develop-novice-guide/)
+  states that emulator debugging does not require signing configuration, and
+  its [build profile documentation](https://developer.huawei.com/consumer/cn/doc/doccenter-deveco-studio/ide-hmos-hvigor-build-profile-app)
+  defines omitted signingConfig as unsigned. Actual acceptance by this exact
+  API24 image remains an installation-stage test, not an assumption.
+- An ordinary `hdc install` signature failure stops the experiment with its
+  exact diagnostics. No account login, new signing key/profile, verifier bypass,
+  SELinux change, additional app permission or guest root execution is used.
+
+These are bounded app-startup and network probes. They do not establish
+public Internet/DNS reachability, system trust roots, general lifecycle
+correctness, release signing, app-store readiness or full Go suite coverage.
+
 ## Official x64 emulator runtime validation
 
 **Result: the experimental Go runtime and native-library ABI execute on the
