@@ -258,7 +258,7 @@ class Runner:
                 raise Failure("No verified x86_64 HDC shell within 300 seconds")
             self.phase = "guest-identification"
             self.shell("guest-identity", "id; uname -a; param get const.ohos.fullname; "
-                       "param get const.ohos.apiversion; getconf PAGE_SIZE; "
+                       "param get const.ohos.apiversion; "
                        "ls -l /lib/ld-musl-x86_64.so.1 /system/lib64/libc.so; mount", check=False)
             self.test(payload)
         finally:
@@ -307,6 +307,7 @@ class Runner:
         if not rows:
             raise Failure("Empty stdlib test manifest")
         files = {"hello", "loader", "libgo_hmos_test.so", "libgo_hmos_netgo.so", "emulator-native-probe",
+                 "emulator-network-probe",
                  "emulator-smoke", "emulator-cgo-smoke", *(row[1] for row in rows)}
         self.shell("prepare-guest", f"mkdir -p {GUEST}/home {GUEST}/tmp")
         for name in sorted(files):
@@ -321,12 +322,14 @@ class Runner:
         _, native = self.shell("native-abi", prefix + "./emulator-native-probe")
         if "PASS: OpenHarmony native C ABI" not in native:
             raise Failure("Native C ABI probe did not report success")
+        self.phase = "native-network"
+        network_status, _ = self.shell("native-network", prefix + "./emulator-network-probe", check=False)
+        failures = ["native-network"] if network_status else []
         self.phase = "runtime-startup"
         _, hello = self.shell("hello", prefix + "./hello")
         if "openharmony/amd64 (runtime.GOOS=openharmony)" not in hello:
             raise Failure("hello did not prove runtime.GOOS=openharmony/amd64")
         self.phase = "runtime"
-        failures = []
         status, text = self.shell("runtime-smoke", prefix + "./emulator-smoke", check=False)
         if status or "PASS: emulator-smoke" not in text:
             failures.append("runtime-smoke")
@@ -335,6 +338,9 @@ class Runner:
         if status or "PASS: emulator-cgo-smoke" not in text:
             failures.append("cgo-smoke")
         for lib in ("libgo_hmos_test.so", "libgo_hmos_netgo.so"):
+            status, text = self.shell("dlopen-core-" + lib, prefix + "./loader ./" + lib + " --no-network", check=False)
+            if status or "PASS: dlopen" not in text or "NOT RUN: network checks" not in text:
+                failures.append("dlopen-core-" + lib)
             status, text = self.shell("dlopen-" + lib, prefix + "./loader ./" + lib, check=False)
             if status or "PASS: dlopen" not in text or "PASS: 100 interface-discovery calls" not in text:
                 failures.append("dlopen-" + lib)
@@ -359,6 +365,11 @@ class Runner:
                 failures.append(package)
         if failures:
             self.phase = "target-tests"
+            try:
+                self.shell("guest-network-diagnostics", "id; cat /proc/self/attr/current; "
+                           "hilog -x -d -t warn,error,fatal | tail -n 300", timeout=30, check=False)
+            except Failure as error:
+                self.record("guest-diagnostics-error", detail=str(error))
             raise Failure("Target test groups failed: " + ", ".join(failures))
         self.phase = "complete"
         self.record("device-execution", passed=True, architecture="amd64",

@@ -9,6 +9,7 @@
 #include <ifaddrs.h>
 #include <pthread.h>
 #include <stdio.h>
+#include <unistd.h>
 
 static void *
 run(void *argument)
@@ -30,6 +31,7 @@ main(void)
 		return 2;
 	if (result != &value || value != 42)
 		return 3;
+	printf("uid=%ld gid=%ld page_size=%ld\n", (long)getuid(), (long)getgid(), sysconf(_SC_PAGESIZE));
 	puts("PASS: OpenHarmony native C ABI");
 	return 0;
 }

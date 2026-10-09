@@ -55,12 +55,17 @@ func main() {
 	})
 	defer watchdog.Stop()
 	fmt.Printf("identity=%s/%s version=%s\n", runtime.GOOS, runtime.GOARCH, runtime.Version())
+	failed := false
 	for _, check := range checks {
 		if err := check.run(); err != nil {
 			fmt.Fprintf(os.Stderr, "FAIL: %s: %v\n", check.name, err)
-			os.Exit(1)
+			failed = true
+			continue
 		}
 		fmt.Printf("PASS: %s\n", check.name)
+	}
+	if failed {
+		os.Exit(1)
 	}
 	fmt.Println("PASS: emulator-smoke")
 }

@@ -6,6 +6,8 @@ They are not Linux userspace or QEMU-user substitutes for the target system.
 
 - `emulator-native-probe`: a plain SDK C program with a pthread create/join
   check, run first to distinguish loader and libc issues from Go startup.
+- `emulator-network-probe`: plain SDK C TCP/UDP loopback bind and getifaddrs
+  checks, used to compare guest policy failures with the same operations in Go.
 - `emulator-smoke`: Go identity; goroutines, channels, atomics, allocations and
   GC; stack growth and recoverable nil faults; timers and `LockOSThread`; temporary
   files; loopback TCP/UDP and interface enumeration; random bytes and SHA-256;
@@ -26,6 +28,11 @@ an external service. TLS uses an explicit local root and validation time. Socket
 operations have deadlines. The executables also have watchdogs, but the host
 runner must enforce an independent timeout in case target timers stop working.
 Set `TMPDIR` to a writable directory in the guest before running them.
+Independent smoke checks continue after a failure so a denied network operation
+does not hide the crypto/TLS result. Failures still cause a nonzero exit. Each
+dlopen variant runs once with the explicit `--no-network` option to isolate
+runtime/ABI behavior, and again with mandatory interface discovery; the second
+result is never discarded to obtain a green workflow.
 
 Build with the actual SDK and the already bootstrapped source checkout:
 
