@@ -7,7 +7,7 @@ contains build automation only; historical core results below do not establish
 validation for a different source revision. Exact GitHub SDK results are
 recorded below.
 
-## Go 1.27.2 update: verification in progress
+## Go 1.27.2: host and official SDK verified
 
 The new default core is
 [`b637b8617624655906b737977f50de5280bf7f65`](https://github.com/ZxillyFork/go-hmos/commit/b637b8617624655906b737977f50de5280bf7f65),
@@ -63,10 +63,88 @@ is blocked by this environment. These tests remain enabled for CI; the local
 suite is not recorded as a complete pass. The local official SDK checksum
 request returned a 195-byte invalid response, so no substitute SDK was used.
 
-Exact-source GitHub host/SDK and installer-matrix validation is pending.
-Do not attribute the successful historical runs below to this revision.
-Native Windows execution, SDK linking, and all device-runtime limitations
-still require their own evidence.
+### Exact-source GitHub validation
+
+Core `b637b8617624655906b737977f50de5280bf7f65`, built using repository revision
+`4763ded31827005420d317bae2881c958b4e321d`, passed all jobs in
+[host + official SDK run 37872123883](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37872123883).
+[Automatic host run 37871812524](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37871812524)
+also passed on rerun. Its first attempt stopped during source checkout before
+the new core revision was available; no build/test result was claimed for that
+attempt.
+
+- Full host security-package suites, including the two external-network TLS
+  tests blocked locally, passed with Go 1.27 defaults. Bootstrap, build/cache
+  identities, focused platform/codegen/API/driver checks, the selected
+  `os.Root` tests, HTTP/2 race regression, and both target runtime builds passed.
+- The official OpenHarmony 6.1 SDK archive matched SHA-256
+  `b833b75a64ee46bbd7880921abbb49b733ec5c8171b6684c9b524d57f624cee0`,
+  identical to the previously validated 6.1.0.31 / API 23 archive. Its compiler
+  is OHOS clang 15.0.4, LLVM revision
+  `feef13a36e78b7a2ff3e9e3f180a958f2782be1e`.
+- ARM64 and AMD64 passed c-shared, c-archive, PIE, C loader, netgo library,
+  six target standard-library test-binary builds, and native Go-tool builds.
+  ELF checks confirmed the architecture, PT_TLS/TLSDESC, non-executable stack,
+  expected musl interpreter, PIE, and absence of initial-exec TLS/TEXTREL.
+- The SDK log records ARM64 PASS at 02:03:04 UTC and AMD64 PASS at 02:04:56 UTC
+  on 2026-10-09, explicitly as compile/link/ELF checks only.
+
+[Compile-only artifact 11590408485](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37872123883/artifacts/11590408485)
+contains 66 files, 205,530,590 bytes; ZIP SHA-256 is
+`a1e55205697e8255d6e2114ec6b17f9a6dbd188e7e1a2e63bee0a61c59c7389b`.
+The downloaded ZIP digest was verified, and both architecture source markers,
+status files, toolchain version, target environment, expected outputs, and ELF
+reports were inspected. Both source markers match the exact core SHA and both
+status files record exit 0 / device execution not performed. The artifact's
+configured expiry is 2026-10-23; it is not a release or complete installation.
+
+### Versioned installer
+
+Installer commit
+[`e33a5258fba55916b9aef00c9df8e4de45a0bdfd`](https://github.com/ZxillyFork/go-hmos-installer/commit/e33a5258fba55916b9aef00c9df8e4de45a0bdfd)
+provides the explicit `go1.27.2-hmos` command, fixed to the new core revision:
+
+```sh
+go install github.com/ZxillyFork/go-hmos-installer/go1.27.2-hmos@latest
+go1.27.2-hmos download
+go1.27.2-hmos version
+```
+
+The toolchain still identifies itself as `go1.27.2-hmos-devel`; this is a
+reviewed experimental snapshot, not a release tag or prebuilt distribution.
+Its SDK remains in `~/sdk/go1.27.2-hmos`, while the official `go1.27.2` helper
+and SDK can coexist. The legacy installer root retains source
+`50a9db343e53ec569374c328998b3ffbada8f850` and its original selection/CLI;
+installing the versioned command does not upgrade that legacy entry.
+
+All four jobs passed in
+[final installer run 37876369615](https://github.com/ZxillyFork/go-hmos-installer/actions/runs/37876369615):
+
+- Native Linux, macOS, and Windows: unit tests/vet, genuine official-helper
+  coexistence with unchanged binary hash, fresh legacy and new-version source
+  builds, paths with spaces, relocation, cached reinstall, host smoke,
+  environment forwarding, and installed-toolchain security regressions.
+- Windows: the new source's dangling-junction `os.Root` cases were required
+  to pass explicitly; skipped tests do not satisfy the assertions.
+- Minimum Go 1.24.6: installer unit tests and vet. This job does not claim a
+  full source bootstrap using the minimum compiler.
+
+The earlier interim `go1.27.2` package collided with the official helper name;
+the final module removes it and uses only `go1.27.2-hmos`. Historical module
+revisions are unchanged, and no existing user launcher is automatically
+removed. The installer's README explains how users can inspect or manually
+restore an old same-name launcher. The earlier run on `aaa18b9` is not used as
+final-SHA verification.
+
+The final module was retrieved through the public Go proxy with the checksum
+database enabled as `v0.0.0-20261009024803-e33a5258fba5`, with module checksum
+`h1:4TsEZhvyTy7vKVckDMgRp9nXbhQRGuPNfOrPNDWuZQo=` and verified origin SHA
+`e33a5258fba55916b9aef00c9df8e4de45a0bdfd`. Mutable `@latest` metadata may lag
+publication while mirrors refresh; use a reviewed full installer SHA for a
+reproducible launcher version.
+
+No target device, emulator, HAP/N-API deployment, native self-bootstrap, or
+complete target runtime/stdlib execution is established by these results.
 
 ## Historical Go 1.27.1 results
 

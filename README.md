@@ -19,8 +19,20 @@ ELF note 修复，并使用独立的 `runtime.GOOS = "openharmony"` 身份。
 
 本次导入旧上游基线之后的全部 10 项安全修复，并新增对应的主机回归、
 HTTP/2 race 检查和安装器原生 Windows junction 回归。
-该精确提交的当前验证状态见 [VALIDATION.md](VALIDATION.md)；旧版本的成功
-结果不适用于此提交。SDK 编译/链接/ELF 检查也**不等于目标设备执行**。
+
+安装器现提供独立的版本命令 `go1.27.2-hmos`：
+
+```sh
+go install github.com/ZxillyFork/go-hmos-installer/go1.27.2-hmos@latest
+go1.27.2-hmos download
+```
+
+它固定该核心提交，可与官方 `go1.27.2` helper 并存；旧安装器根入口仍保留
+原版本。最终安装器的 Linux/macOS/Windows 与最低 Go CI 均已通过，详见
+[安装器验证](VALIDATION.md#versioned-installer)。
+该精确提交已通过 [host 与官方 SDK 检查](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37872123883)，
+覆盖 ARM64 和 AMD64。详细结果、已核验工件及安装器更新状态见
+[VALIDATION.md](VALIDATION.md)。SDK 编译/链接/ELF 检查**不等于目标设备执行**。
 默认推送运行 host 检查；真实 SDK 检查需手动选择 `sdk=true`。
 
 ## GitHub Actions
