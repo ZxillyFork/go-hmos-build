@@ -1,0 +1,103 @@
+name: HarmonyOS parameter diagnostics
+
+on:
+  push:
+    branches: [ci/harmonyos-amd64]
+    paths-ignore:
+      - '.github/workflows/harmonyos-app-network.yml'
+      - 'scripts/app/**'
+      - 'scripts/build-app-tests.sh'
+      - 'testdata/app-host/**'
+      - 'testdata/app-network/**'
+      - 'tests/test_app_network.py'
+      - 'README.md'
+      - 'VALIDATION.md'
+      - '.gitignore'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: harmonyos-parameter-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  GOENV: 'off'
+  GOTOOLCHAIN: local
+
+jobs:
+  runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      GO_SOURCE_ROOT: ${{ github.workspace }}/source
+      GO_HMOS_CACHE_ROOT: ${{ github.workspace }}/.cache
+      SDK_DOWNLOAD_DIR: ${{ github.workspace }}/.sdk
+      # This immutable package's agreements were already accepted in the owner's
+      # cjv run 37875586125. Any package update needs a fresh license review.
+      HARMONYOS_ACCEPTED_CLI_SHA256: 58da7359019e9360a8bb82da0cd1d3b3b26fedc338379f257849f2162e3ac1fc
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check scripts and pin the core revision
+        id: source
+        run: |
+          for script in scripts/*.sh; do bash -n "$script"; done
+          python3 -m unittest discover -s tests -v
+          python3 -m unittest discover -s testdata/emulator -p "test_*.py" -v
+          printf 'core_sha=%s\n' "$(python3 scripts/source-pin.py)" >> "$GITHUB_OUTPUT"
+          printf 'EMULATOR_ROOT=%s/go-hmos-emulator\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - name: Verify actual KVM VM creation
+        run: |
+          # Give only this process the runner's existing kvm group. Do not alter
+          # device modes, ACLs, group membership, or system security settings.
+          sudo -E env HOME="$HOME" USER="$USER" LOGNAME="$LOGNAME" setpriv --reuid="$(id -u)" --regid="$(getent group kvm | cut -d: -f3)" \
+            --init-groups --inh-caps=-all --bounding-set=-all python3 scripts/emulator/run.py hardware
+      - name: Install official emulator dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libatomic1 libpulse0 libegl1 \
+            libgbm1 libgl1 libpng16-16 libfontconfig1 libfreetype6 libxcb-icccm4 \
+            libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+            libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libsm6 libice6 \
+            libxkbcommon-x11-0 libxkbcommon0 libglib2.0-0
+      - name: Download checksum-pinned Huawei CLI 26.0.0.821
+        run: python3 scripts/emulator/run.py download
+      - name: Install official HarmonyOS 6.1.1 API 24 PC image
+        run: python3 scripts/emulator/run.py install
+      - name: Reuse the completed standalone payload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download 37958119416 --repo ZxillyFork/go-hmos-build --name harmonyos-amd64-runtime-85d266d5cf5d39fbdacfaeab02eb5bee2c4a8ace --dir reused
+      - name: Inspect the time parameter ABI
+        run: |
+          cat > scripts/emulator/parameter-check.py <<'PY'
+          import os
+          from pathlib import Path
+          import run
+          def check(self, payload):
+              self.shell("parameter", "param get persist.time.timezone; id; cat /proc/self/attr/current; od -An -tx1 -N1024 < /dev/__parameters__/u:object_r:time_param:s0", check=False)
+              self.shell("timezone-files", "ls /etc/zoneinfo; cat /etc/resolv.conf", check=False)
+              self.shell("prepare", f"mkdir -p {run.GUEST}")
+              for name in ("system-config", "system-native"):
+                  source = Path(payload) / name
+                  self.run("send-"+name, [self.tools / "hdc", "-t", run.TARGET, "file", "send", source, run.GUEST+"/"+name], env=self.env())
+                  self.shell("run-"+name, f"cd {run.GUEST} && chmod 755 {name} && ./{name}", check=False)
+          run.Runner.test = check
+          run.Runner(os.environ["EMULATOR_ROOT"], "emulator-diagnostics").boot("reused/openharmony-out/amd64")
+          PY
+          sudo -E env HOME="$HOME" USER="$USER" LOGNAME="$LOGNAME" setpriv --reuid="$(id -u)" --regid="$(getent group kvm | cut -d: -f3)" \
+            --init-groups --inh-caps=-all --bounding-set=-all python3 scripts/emulator/parameter-check.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: parameter-diagnostics
+          path: emulator-diagnostics/
+          retention-days: 7
