@@ -39,7 +39,7 @@ CXX
 chmod +x "$work/cc" "$work/cxx"
 unset CGO_CFLAGS CGO_CPPFLAGS CGO_CXXFLAGS CGO_FFLAGS CGO_LDFLAGS
 export CC="$work/cc" CXX="$work/cxx" GOOS=openharmony GOARCH="$arch" CGO_ENABLED=1
-"$CC" -O2 -pthread "$fixtures/native-probe.c" -o "$out/emulator-native-probe"
+"$CC" -O2 -fPIE -pie -pthread "$fixtures/native-probe.c" -o "$out/emulator-native-probe"
 "$CC" --version > "$out/emulator-compiler-version.txt"
 "$root/bin/go" env GOOS GOARCH CGO_ENABLED GOROOT > "$out/emulator-target-env.txt"
 "$root/bin/go" version > "$out/emulator-go-version.txt"
