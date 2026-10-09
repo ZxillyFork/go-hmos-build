@@ -48,6 +48,8 @@ def guest_result(output, marker):
 
 
 class Runner:
+    headless = True
+
     def __init__(self, root, logs):
         self.root = Path(root).resolve()
         self.logs = Path(logs).resolve()
@@ -68,7 +70,7 @@ class Runner:
 
     def env(self):
         env = dict(os.environ)
-        env.update(QT_QPA_PLATFORM="offscreen",
+        env.update(QT_QPA_PLATFORM="offscreen" if self.headless else "xcb",
                    QT_QPA_PLATFORM_PLUGIN_PATH=str(self.emulator.parent / "plugins/platforms"),
                    LD_LIBRARY_PATH=f"{self.emulator.parent}:{self.emulator.parent / 'lib'}:{self.tools}")
         return env
@@ -238,11 +240,17 @@ class Runner:
             raise Failure(f"{label}: guest exit {status}")
         return status, output
 
+    def start_command(self):
+        command = [self.emulator, "-start", NAME, "-instancePath", self.instances,
+                   "-imageRoot", self.images, "-hdcPort", "15555", "-bootMode", "reset"]
+        if self.headless:
+            command.append("-noWindow")
+        return command
+
     def boot(self, payload):
         self.phase = "emulator-boot"
         output = (self.logs / "start.log").open("w")
-        command = [self.emulator, "-start", NAME, "-instancePath", self.instances,
-                   "-imageRoot", self.images, "-hdcPort", "15555", "-bootMode", "reset", "-noWindow"]
+        command = self.start_command()
         process = subprocess.Popen(list(map(str, command)), stdout=output, stderr=subprocess.STDOUT,
                                    stdin=subprocess.DEVNULL, env=self.env(), cwd=self.emulator.parent,
                                    start_new_session=True)
