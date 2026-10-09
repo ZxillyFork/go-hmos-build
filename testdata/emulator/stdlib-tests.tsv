@@ -1,0 +1,24 @@
+# Copyright 2026 The Go Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+# package<TAB>binary<TAB>anchored test selection<TAB>timeout seconds
+# All selected cases are in-process and do not require the source tree,
+# a target Go compiler, external DNS/network access, or system root CAs.
+runtime	runtime.test	^(TestOpenHarmonyRuntimePolicy|TestOpenHarmonySynchronousFault|TestOpenHarmonyMadvDontNeedDefault|TestChan|TestChanSendInterface|TestCallers|TestCallersPanic|TestCallersAfterRecovery|TestCallersNilPointerPanic|TestCallersDivZeroPanic)$	120
+time	time.test	^(TestSleep|TestAfter|TestAfterFunc|TestReset|TestUnixUTC|TestUnixNanoUTC|TestDurationString|TestParseDuration|TestParseDurationErrors)$	120
+net	net.test	^(TestParseIP|TestIPString|TestIPMask|TestParseCIDR|TestIPNetContains|TestSplitHostPort|TestJoinHostPort)$	120
+os/signal	os_signal.test	^(TestNotifyContextCancelParent|TestNotifyContextPrematureCancelParent|TestNotifyContextSimultaneousStop|TestNotifyContextStringer)$	120
+runtime/pprof	runtime_pprof.test	^(TestOpenHarmonyCPUProfileUnsupported|TestOpenHarmonyHeapProfileDebug|TestGoroutineCounts|TestEmptyCallStack)$	120
+crypto/x509	crypto_x509.test	^(TestMatchHostnames|TestMatchIP|TestCertificateEqualOnNil|TestMismatchedSignatureAlgorithm)$	120
+bytes	bytes.test	^(TestNewBuffer|TestNewBufferString|TestBasicOperations|TestEqual|TestCompare|TestIndex|TestIndexByte|TestCountByte|TestSplit|TestSplitAfter)$	120
+strings	strings.test	^(TestBuilder|TestBuilderString|TestBuilderReset|TestBuilderGrow|TestCompare|TestIndex|TestIndexByte|TestCount|TestSplit|TestSplitAfter)$	120
+math	math.test	^(TestNaN|TestAcos|TestAsin|TestAtan|TestCeil|TestCos|TestExp|TestFloor|TestLog|TestPow|TestSin|TestSqrt|TestTrunc)$	120
+encoding/json	encoding_json.test	^(TestMarshal|TestUnmarshal|TestUnmarshalMarshal|TestNumberAccessors|TestMarshalInvalidUTF8|TestEscape)$	120
+compress/flate	compress_flate.test	^(TestDeflate|TestDeflateInflate|TestDeflateInflateString|TestReaderDict|TestWriterDict|TestWriterReset)$	120
+sync	sync.test	^(TestCondSignal|TestCondBroadcast|TestOnce|TestOncePanic|TestMutex|TestWaitGroup|TestWaitGroupGo)$	120
+sync/atomic	sync_atomic.test	^(TestSwapInt32|TestSwapInt64|TestAddInt32|TestAddInt64|TestCompareAndSwapInt32|TestCompareAndSwapInt64|TestLoadInt32|TestLoadInt64|TestStoreInt32|TestStoreInt64)$	120
+sort	sort.test	^(TestSearch|TestFind|TestSortIntSlice|TestSortFloat64Slice|TestSortStringSlice)$	120
+strconv	strconv.test	^(TestParseBool|TestFormatBool|TestAtof|TestParseUint32|TestParseUint64|TestParseInt32|TestParseInt64)$	120
+encoding/binary	encoding_binary.test	^(TestLittleEndianRead|TestLittleEndianWrite|TestBigEndianRead|TestBigEndianWrite|TestReadSlice|TestWriteSlice|TestSliceRoundTrip)$	120
+hash/crc32	hash_crc32.test	^(TestHashInterface|TestSimple|TestGolden|TestGoldenMarshal|TestSlicing|TestArchIEEE|TestArchCastagnoli)$	120
+crypto/sha256	crypto_sha256.test	^(TestGolden|TestGoldenMarshal|TestSize|TestBlockSize|TestHash)$	120

@@ -126,7 +126,36 @@ python3 -m unittest discover -s tests -v
 
 ## 真实设备验证
 
-本仓库只构建。真机、完整系统模拟器、签名 HAP/N-API 集成、生命周期、网络策略、
+### 官方 x64 模拟器实验
+
+`HarmonyOS x64 emulator runtime` 工作流在 `ci/harmonyos-amd64` 分支推送时运行，
+也可手动触发。它只使用 GitHub 的 Ubuntu 24.04 x64 runner 和实际 KVM，
+从华为 CDN 下载固定 SHA-256 的 Command Line Tools 26.0.0.821，
+由官方 CLI 下载 HarmonyOS 6.1.1（API 24）PC 镜像。ARM 暂不测试。
+这与用于编译的公开 OpenHarmony 6.1（API 23）SDK 是不同组件；兼容性由
+实际执行结果判断，不把 API 版本不同藏在同一个 SDK 标签里。
+
+流程先检查 KVM 能否创建 VM，再检查下载、许可、镜像、启动、HDC 传输、
+ABI、Go runtime 和选定标准库测试。每个 guest 命令都有随机退出码标记，
+HDC 返回零但设备断连、缺少标记或 guest 非零退出均不能算成功。
+启动、下载和每项测试均有超时，并在退出时收集日志、停止该模拟器实例。
+测试包括 hello 的真实 GOOS/GOARCH、GC、goroutines、timers、OS threads、
+cgo/C TLS、foreign pthread callbacks、dlopen、netgo 变体和本机网络。
+标准库的精确选择见 `testdata/emulator/stdlib-tests.tsv`，不等同于完整 Go test suite。
+
+CLI 的来源线索参考了 [cjv 的实验分支](https://github.com/Zxilly/cjv/tree/60759572e197520477d814b2382a6753e95fa44f)，
+实现与测试在本仓库独立维护。`scripts/emulator/cli.json` 保留下载地址、
+固定摘要和来源。摘要已与此前成功下载的记录相符，不能描述成已独立取得
+华为签名的 checksum。镜像由官方工具安装，日志记录实际 system.img 摘要，
+目前不声称镜像已被仓库内历史摘要固定。
+
+此前同一包的协议已在 [已有 cjv 流程](https://github.com/Zxilly/cjv/actions/runs/37875586125)
+接受；本流程在重新接受之前核对完整协议文本的摘要。新增或变更协议会停止，
+不自动沿用旧授权。不会修改 KVM 设备权限或永久组成员关系，不上传或缓存
+华为 SDK、CLI 和系统镜像。工件仅包含测试程序及诊断；脚本单元测试也不计作
+目标系统执行。最新实际结果以精确提交的 Actions 日志及 `VALIDATION.md` 为准。
+
+真机、签名 HAP/N-API 集成、生命周期、网络策略、
 证书服务、时区同步和内存压力等仍需单独验证。运行时应记录 OS/API/SDK/CPU、
 核心提交、命令、退出码和日志；编译通过、未运行和运行失败必须分别报告。
 详见 [验证记录](VALIDATION.md) 与核心平台文档。
