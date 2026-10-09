@@ -73,19 +73,63 @@ def validate_report(report):
         raise Failure("app checks failed: " + ", ".join(failed))
 
 
+def app_services_ready(text):
+    # bm emits this header and list only after obtaining BMS/installer proxies
+    # and successfully reading the installed bundle list. A shell is ready much
+    # earlier during a cold boot; zero exit status alone is insufficient.
+    return ("error:" not in text.lower() and
+            re.search(r"^ID: [0-9]+:\r?\n\t[A-Za-z0-9_.]+\r?$", text, re.M) is not None)
+
+
 class AppRunner(Runner):
+    def diagnose_app(self, prefix):
+        commands = {
+            "boot": "param get bootevent.boot.completed; param get bootevent.bms.main.bundles.ready",
+            "bundles": "bm dump -a",
+            "hilog-help": "hilog -h",
+            "hilog": "hilog -z 400",
+        }
+        for name, command in commands.items():
+            try:
+                self.shell(prefix + "-" + name, command, timeout=20, check=False)
+            except (Failure, OSError) as error:
+                self.record("app-diagnostic-error", probe=name, detail=str(error))
+
+    def wait_for_app_services(self):
+        self.phase = "app-service-readiness"
+        deadline = time.monotonic() + 300
+        attempt = 0
+        while time.monotonic() < deadline:
+            attempt += 1
+            try:
+                status, text = self.shell(f"app-service-ready-{attempt}", "bm dump -a",
+                                          timeout=min(15, max(0.1, deadline-time.monotonic())),
+                                          check=False)
+                if status == 0 and app_services_ready(text):
+                    self.record("app-services", passed=True, attempts=attempt)
+                    self.shell("app-boot-completed", "param get bootevent.boot.completed", timeout=15, check=False)
+                    self.shell("app-hilog-help", "hilog -h", timeout=15, check=False)
+                    return
+            except Failure as error:
+                self.record("app-service-wait", attempt=attempt, detail=str(error))
+            time.sleep(min(5, max(0, deadline-time.monotonic())))
+        self.diagnose_app("app-readiness-failure")
+        raise Failure("BMS/installer service not ready within 300 seconds; HAP was not installed")
+
     def test(self, payload):
         payload = Path(payload).resolve()
         hap = payload / "entry-default-unsigned.hap"
         if not hap.is_file():
             raise Failure("missing normal debug HAP")
+        self.wait_for_app_services()
         self.phase = "app-install"
         self.record("app-package", sha256=digest(hap), permissions=["ohos.permission.INTERNET"],
                     signing="unsigned normal simulator install; no verifier changes")
         code, text = self.run("app-install", [self.tools / "hdc", "-t", TARGET, "install", hap],
                               env=self.env(), timeout=120, check=False)
         if code or not re.search(r"(?:install bundle successfully|install successfully)", text, re.I):
-            raise Failure("ordinary HAP install rejected; inspect app-install.log; no signing/security workaround applied")
+            self.diagnose_app("app-install-failure")
+            raise Failure("ordinary HAP install failed; inspect app-install.log and diagnostics; no signing/security workaround applied")
         self.shell("app-bundle", f"bm dump -n {BUNDLE}", check=False)
         token = secrets.token_hex(16)
         self.phase = "app-launch"
@@ -98,13 +142,13 @@ class AppRunner(Runner):
         attempt = 0
         while time.monotonic() < deadline:
             attempt += 1
-            _, log = self.shell("app-hilog", "hilog -x -d -T GoHmosApp", timeout=min(20, max(0.1, deadline - time.monotonic())), check=False)
+            _, log = self.shell("app-hilog", "hilog -x -T GoHmosApp", timeout=min(20, max(0.1, deadline - time.monotonic())), check=False)
             report = extract_report(log, token)
             if report is not None:
                 break
             time.sleep(min(5, max(0, deadline - time.monotonic())))
         if report is None:
-            self.shell("app-errors", "hilog -x -d -t warn,error,fatal | tail -n 400", timeout=30, check=False)
+            self.diagnose_app("app-report-missing")
             raise Failure("no complete fresh app report within 180 seconds")
         (self.logs / "app-report.json").write_text(json.dumps(report, indent=2) + "\n")
         self.record("app-report", report=report)

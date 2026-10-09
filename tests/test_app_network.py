@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -82,6 +83,36 @@ class ReportTest(unittest.TestCase):
         profile=json.loads((ROOT/'testdata/app-host/build-profile.json5').read_text())
         self.assertEqual(profile['app']['signingConfigs'],[])
         self.assertNotIn('signingConfig',profile['app']['products'][0])
+
+
+class ServiceReadinessTest(unittest.TestCase):
+    def test_only_successful_bundle_list_proves_readiness(self):
+        self.assertTrue(runner.app_services_ready("ID: 100:\n\tcom.ohos.launcher\n\tcom.ohos.settings\n"))
+        for text in ["", "error: failed to execute your command.\n", "ID: 100:\n",
+                     "dump failed\n", "\tcom.ohos.launcher\n", "ID: 100:\n\tcom.ohos.launcher\nerror: partial"]:
+            with self.subTest(text=text): self.assertFalse(runner.app_services_ready(text))
+
+    def test_service_probe_retries_before_install(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app=runner.AppRunner(directory,directory)
+            replies=[(0,"error: failed to execute your command.\n"),
+                     (0,"ID: 100:\n\tcom.ohos.launcher\n"),(0,"true\n"),(0,"hilog help")]
+            with mock.patch.object(app,'shell',side_effect=replies) as shell, mock.patch.object(runner.time,'sleep'):
+                app.wait_for_app_services()
+            self.assertEqual(shell.call_args_list[0].args[1], 'bm dump -a')
+            self.assertEqual(shell.call_args_list[1].args[1], 'bm dump -a')
+            self.assertTrue(any(r['name']=='app-services' for r in app.results))
+            self.assertNotIn('install', repr(shell.call_args_list))
+
+    def test_expired_readiness_cannot_install(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app=runner.AppRunner(directory,directory)
+            with mock.patch.object(runner.time,'monotonic',side_effect=[0,301]), \
+                 mock.patch.object(app,'diagnose_app') as diagnose, mock.patch.object(app,'shell') as shell:
+                with self.assertRaisesRegex(runner.Failure,'HAP was not installed'):
+                    app.wait_for_app_services()
+                shell.assert_not_called()
+                diagnose.assert_called_once()
 
 
 class PackedHapTest(unittest.TestCase):
