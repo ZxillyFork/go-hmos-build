@@ -4,15 +4,16 @@
 `openharmony/arm64` 和 `openharmony/amd64`。它不是能在鸿蒙设备上运行的
 Go 主机安装包，也不包含 Huawei 商业 SDK、OpenHarmony native SDK、模拟器或凭据。
 
-当前版本化 prerelease：`go1.27.2-hmos.3`。编译器自身版本保持
+当前版本化 prerelease：`go1.27.2-hmos.4`。编译器自身版本保持
 `go1.27.2-hmos-devel`。核心固定到 `hmos-release-branch.go1.27` 的提交
-[`4f16eff34baee504014f56bd8b7148293f85362a`](https://github.com/ZxillyFork/go-hmos/commit/4f16eff34baee504014f56bd8b7148293f85362a)。
-此版本加入异步抢占及抢占信号发送失败后的重试。归档摘要和构建记录见
+[`e6f73c93079c6bc3c41086632420af33bb3de631`](https://github.com/ZxillyFork/go-hmos/commit/e6f73c93079c6bc3c41086632420af33bb3de631)。
+此版本修复 HDC shell 下 UDP DNS 的广播选项权限错误、TCP 连接状态查询权限错误，
+并默认读取鸿蒙公共 CA 文件 `/etc/ssl/certs/cacert.pem`。归档摘要和构建记录见
 release 中的 `sdk-manifest.json`；发布工作流通过后提供下载。
 
 ## 发布文件
 
-[版本化 release](https://github.com/ZxillyFork/go-hmos-build/releases/tag/go1.27.2-hmos.3)
+[版本化 release](https://github.com/ZxillyFork/go-hmos-build/releases/tag/go1.27.2-hmos.4)
 包含：
 
 - `go1.27.2-hmos-devel.linux-amd64.tar.gz`：单一顶层 `go/`，包含 `bin/go`、
@@ -40,14 +41,14 @@ steps:
   - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
     with:
       go-version: '1.27.2-hmos-devel'
-      go-download-base-url: 'https://github.com/ZxillyFork/go-hmos-build/releases/download/go1.27.2-hmos.3'
+      go-download-base-url: 'https://github.com/ZxillyFork/go-hmos-build/releases/download/go1.27.2-hmos.4'
       token: ''
       cache: false
   - name: Verify fork identity
     shell: bash
     run: |
       test "$(go env GOVERSION)" = go1.27.2-hmos-devel
-      test "$(cat "$(go env GOROOT)/core-revision.txt")" = 4f16eff34baee504014f56bd8b7148293f85362a
+      test "$(cat "$(go env GOROOT)/core-revision.txt")" = e6f73c93079c6bc3c41086632420af33bb3de631
       go tool dist list | grep -Fx openharmony/arm64
 ```
 
@@ -66,7 +67,7 @@ setup-go 没有 SHA-256 输入。需要锁定字节的消费端应在仓库中�
 选中工具链与已验证归档里的 `bin/go`、`pkg/tool/linux_amd64/compile` 等文件：
 
 ```sh
-base=https://github.com/ZxillyFork/go-hmos-build/releases/download/go1.27.2-hmos.3
+base=https://github.com/ZxillyFork/go-hmos-build/releases/download/go1.27.2-hmos.4
 archive=go1.27.2-hmos-devel.linux-amd64.tar.gz
 curl --proto '=https' --proto-redir '=https' --fail --location "$base/$archive" -o "$archive"
 # EXPECTED_SHA256 必须是审阅后固定在消费仓库的实际摘要。

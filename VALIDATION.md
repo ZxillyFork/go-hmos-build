@@ -677,3 +677,49 @@ separate download; the selected fork identity and embedded source SHA were check
 This SDK run does not execute binaries on a target device. No native SDK is redistributed.
 [Retained verification record](validation/linux-sdk-37922403510.json) and
 [setup-go integration](docs/linux-sdk.md) describe the complete contract and remaining limits.
+
+## HDC shell DNS/TCP/HTTPS validation for go1.27.2-hmos.4
+
+Core: `e6f73c93079c6bc3c41086632420af33bb3de631`. On 2026-10-10,
+manual probes ran in the official HarmonyOS 6.1.1 x64/API24 emulator under
+WSL Ubuntu/KVM. The guest reported `OpenHarmony-6.1.1.125`; execution used
+HDC shell uid 2000 (`u:r:sh:s0`) with SELinux Enforcing unchanged.
+
+The original source failed UDP DNS at `SO_BROADCAST` and TCP connections at
+`SO_ERROR`, both with permission denied. Native C controls confirmed that
+unicast UDP and TCP connections themselves were allowed. The fixes ignore
+only OpenHarmony datagram broadcast-option EACCES/EPERM and, when SO_ERROR
+is denied, accept a connection only after getpeername verifies a peer.
+
+Patched-source target execution passed:
+
+- UDP DNS and forced TCP DNS through the system-selected resolver (10.0.2.3).
+- Direct TCP and HTTPS to example.com, including response-body consumption.
+- Default x509 system pool loading (125 roots) and verified HTTPS chains,
+  without SSL_CERT_FILE, SSL_CERT_DIR, supplied certificates or disabled TLS checks.
+- Closed-port connections still fail; pre-canceled contexts still return cancellation.
+- The original cjv command `toolchain list-remote --channel nightly --limit 1 --json`
+  returned nightly metadata successfully. HOME was set to a dedicated writable
+  directory because cjv requires it; the returned platform version list was empty.
+- Local time Asia/Shanghai, explicit Shanghai/Berlin/New_York zones, temporary
+  file creation, shell user lookup and PDF/DOCX MIME lookup.
+
+The existing Linux net and crypto/x509 short suites passed. OpenHarmony ARM64
+cross-compilation passed, but ARM64 device execution was not performed. No new
+regression test files were added; these were manual external probes.
+
+Remaining boundary: net.Interfaces still fails while creating a route socket in
+this shell domain. Bind/listen is also restricted. These results do not establish
+arbitrary device or app permissions. Missing /etc/localtime is expected and is
+handled by the existing platform timezone implementation.
+
+Related primary references:
+
+- [Huawei's default CA path](https://developer.huawei.com/consumer/en/doc/harmonyos-faqs-V14/faqs-network-41-V14)
+  is `/etc/ssl/certs/cacert.pem`. The shell can read it even though it cannot
+  enumerate `/etc/security/certificates`; the latter remains a fallback.
+- [OpenHarmony NDK network guidance](https://github.com/openharmony/docs/blob/master/zh-cn/application-dev/napi/c-cpp-overview.md#网络使用)
+  recommends ioctl instead of RTM_GETLINK for interface queries. This does not
+  guarantee that a shell domain may create a route socket.
+- [iana-time-zone's OpenHarmony implementation](https://github.com/strawlab/iana-time-zone/blob/main/src/tz_ohos.rs)
+  also handles the absence of /etc/localtime through a platform-specific path.
