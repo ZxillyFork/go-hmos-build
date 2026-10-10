@@ -767,3 +767,22 @@ These runtime results used locally built binaries from the exact repaired
 source. They do not yet establish execution of the separately published SDK
 bytes. The versioned release workflow records package, host, cross-link and
 post-publication verification for the new distribution.
+
+Published hmos.5 verification:
+
+- Release workflow `38033062342` passed both packaging and post-publication
+  verification at build commit `6e06ab5137ed38091b1e0f7a08da1786acc758ce`.
+- The downloaded archive SHA-256 matched `SHA256SUMS`, the release manifest and
+  GitHub's asset digest:
+  `a98f1668e44b5f5e3d982f0a3287bc412a2b1c3c9ce356ec3ef82de3abd3cf14`.
+- The published archive's core revision matched
+  `7ea2c37368c408d68804c9bda8f9e74b03fe4122`; its three repaired runtime source
+  files and new syscall regression test matched that commit byte for byte.
+- Using only the extracted published SDK, the ARM64 syscall test binary was
+  rebuilt and executed in the same headless OpenHarmony 6.1.1.125 environment.
+  `TestOpenHarmonyExecPreemption` passed all three cases (60 child invocations)
+  in 67.66 seconds with guest exit code 0. A second device-log check also passed
+  all three cases in 49.97 seconds. Asynchronous preemption remained enabled.
+- The temporary ARM64 VM was stopped and its RAM overlays and build cache were
+  removed. This confirms target execution from the published SDK; it does not
+  establish real PC HiShell behavior or native cgo execution.
