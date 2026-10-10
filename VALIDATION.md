@@ -739,3 +739,31 @@ Published hmos.4 verification:
   after restarting the HDC server. The successful target execution above used
   the same core source changes with the local compiler; release-built target
   execution is not claimed. The dedicated test emulator was stopped afterward.
+
+## Signal 64 exec regression validation for go1.27.2-hmos.5
+
+Core: `7ea2c37368c408d68804c9bda8f9e74b03fe4122`.
+On 2026-10-10, the OpenHarmony ARM64 runtime was tested with the experimental
+headless startup of the HarmonyOS 6.1.1 ARM64 PC image under x86 QEMU/TCG.
+The guest reported OpenHarmony 6.1.1.125, HDC shell uid 2000 and SELinux
+Enforcing. This is not a graphical emulator or real PC HiShell validation.
+
+- Before the repair, a minimal Go program replacing itself with the native
+  system shell via `syscall.Exec` failed with signal 64 in 13 of 30 attempts.
+- After the repair, the same stress test passed all 30 attempts.
+- `syscall.TestOpenHarmonyExecPreemption` passed all 60 child invocations,
+  covering successful exec, repeated failed exec and locked-thread exits.
+- Target runtime policy, synchronous-fault, preemption, GC-preemption and
+  post-syscall preemption tests passed; the `AsyncPreempt` helper returned OK.
+- Cjv built from source `cf9975edd7c5ea96e35554e43861fe34d8c0c87f` with the
+  repaired runtime downloaded and installed the actual online nightly
+  `1.3.0-alpha.20261010001050`. Its default `cjc --version` proxy passed 20/20
+  invocations with GODEBUG unset. Default-proxy compilation and program
+  execution printed `CJV_LIVE_INSTALL_NIGHTLY_OK`.
+- Focused Linux host preemption/exec tests passed. OpenHarmony amd64 syscall
+  tests and Darwin arm64 runtime tests cross-compiled; they were not executed.
+
+These runtime results used locally built binaries from the exact repaired
+source. They do not yet establish execution of the separately published SDK
+bytes. The versioned release workflow records package, host, cross-link and
+post-publication verification for the new distribution.
