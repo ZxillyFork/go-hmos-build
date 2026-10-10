@@ -723,3 +723,19 @@ Related primary references:
   guarantee that a shell domain may create a route socket.
 - [iana-time-zone's OpenHarmony implementation](https://github.com/strawlab/iana-time-zone/blob/main/src/tz_ohos.rs)
   also handles the absence of /etc/localtime through a platform-specific path.
+Published hmos.4 verification:
+
+- [CI run 38014707642](https://github.com/ZxillyFork/go-hmos-build/actions/runs/38014707642)
+  completed successfully, including host checks, both target architectures,
+  native PIE/c-shared links, and official setup-go before and after publication.
+- Build commit: `aa2bdb3d864b8e079a46eddbf10932083e95a068`.
+- [Release](https://github.com/ZxillyFork/go-hmos-build/releases/tag/go1.27.2-hmos.4)
+  archive SHA-256: `50926cf754c544b6cbe230fad4088d13be310d923adcb35247237e0c208af971`.
+- An independent download verified archive/provenance hashes, the manifest,
+  embedded core revision, and compiler identity. The downloaded SDK compiled
+  both the network probe and cjv successfully.
+- A second emulator execution attempt using those release-built binaries was
+  blocked by HDC transfer timeout and subsequent target disconnection, including
+  after restarting the HDC server. The successful target execution above used
+  the same core source changes with the local compiler; release-built target
+  execution is not claimed. The dedicated test emulator was stopped afterward.
