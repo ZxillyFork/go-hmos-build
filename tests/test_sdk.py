@@ -17,8 +17,8 @@ spec.loader.exec_module(metadata)
 class SDKMetadataTest(unittest.TestCase):
     def test_real_release_config(self):
         release, source = metadata.config()
-        self.assertTrue(release['release_tag'].startswith('go1.27.2-hmos.'))
-        self.assertEqual(source['revision'], '7ea2c37368c408d68804c9bda8f9e74b03fe4122')
+        self.assertTrue(release['release_tag'].startswith('go1.27.4-hmos.'))
+        self.assertEqual(source['revision'], '81bad8b625b9c845961010ea2af776a3cb426b4a')
 
     def test_moving_source_and_stock_version_rejected(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -26,7 +26,7 @@ class SDKMetadataTest(unittest.TestCase):
             release = json.loads((ROOT / 'sdk-release.json').read_text())
             source = json.loads((ROOT / 'source.json').read_text())
             for changed, field, value in ((source, 'revision', 'hmos-release-branch.go1.27'),
-                                          (release, 'go_version', 'go1.27.2'),
+                                          (release, 'go_version', 'go1.27.4'),
                                           (release, 'release_tag', 'latest'),
                                           (release, 'host_arch', 'arm64')):
                 with self.subTest(field=field):
@@ -41,15 +41,15 @@ class SDKMetadataTest(unittest.TestCase):
     def test_manifest_hash_and_source_provenance(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            archive = 'go1.27.2-hmos-devel.linux-amd64.tar.gz'
+            archive = 'go1.27.4-hmos-devel.linux-amd64.tar.gz'
             (root / archive).write_bytes(b'offline fixture')
             data = metadata.provenance()
             (root / 'provenance.json').write_text(json.dumps(data))
             result = metadata.manifest(root)
             self.assertEqual(result['sha256'], hashlib.sha256(b'offline fixture').hexdigest())
             self.assertFalse(result['native_sdk_included'])
-            self.assertEqual(result['source_commit'], '7ea2c37368c408d68804c9bda8f9e74b03fe4122')
-            self.assertIn('/releases/download/go1.27.2-hmos.5/', result['download_url'])
+            self.assertEqual(result['source_commit'], '81bad8b625b9c845961010ea2af776a3cb426b4a')
+            self.assertIn('/releases/download/go1.27.4-hmos.1/', result['download_url'])
 
     def test_workflow_uses_real_setup_go_custom_input(self):
         workflow = (ROOT / '.github/workflows/linux-sdk.yml').read_text()

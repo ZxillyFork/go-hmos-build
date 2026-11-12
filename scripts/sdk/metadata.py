@@ -90,6 +90,8 @@ No Huawei proprietary SDK or emulator package is included.
 - Core: https://github.com/{source["repository"]}/commit/{source["revision"]}
 - Build: https://github.com/ZxillyFork/go-hmos-build/commit/{data["build_commit"]}
 - Build run: {data["build_run_url"]}
+- Upstream: Go 1.27.4; all 16 OpenHarmony patches rebased with prior runtime/network fixes retained.
+- Changes: Go 1.27.3/1.27.4 certificate-chain, cgo/linker input validation, HTTP and maintenance fixes.
 - Compiler identity: `{release["go_version"]}`
 - Archive SHA-256: `{data["sha256"]}`
 

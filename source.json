@@ -1,5 +1,5 @@
 {
   "repository": "ZxillyFork/go-hmos",
-  "revision": "7ea2c37368c408d68804c9bda8f9e74b03fe4122",
-  "bootstrap_version": "1.27.2"
+  "revision": "81bad8b625b9c845961010ea2af776a3cb426b4a",
+  "bootstrap_version": "1.27.4"
 }

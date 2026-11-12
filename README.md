@@ -16,41 +16,22 @@ release 应用、外网/DNS、真机与 ARM 仍未验证。见[应用进程实�
 目标平台限制见核心仓库的
 [平台说明](https://github.com/ZxillyFork/go-hmos/blob/b637b8617624655906b737977f50de5280bf7f65/doc/openharmony.md)。
 
-## 当前源代码固定状态
+## 当前版本：Go 1.27.4
 
-默认核心提交为 [7830d8769fef](https://github.com/ZxillyFork/go-hmos/commit/7830d8769fefbe02c3b23d24f3d04bde6a1382da)，
-这是独立 `hmos-release-branch.go1.27` 的合并提交，代码树与已测 `b637b8617624` 相同；
-原官方 `release-branch.go1.27` 未改动。
-基于官方 Go 1.27.2，保留前两轮 review 后的 OpenHarmony、TLS、栈元数据和
-ELF note 修复，并使用独立的 `runtime.GOOS = "openharmony"` 身份。
-工具版本为 `go1.27.2-hmos-devel`，保留独立的内容 build ID。
-
-本次导入旧上游基线之后的全部 10 项安全修复，并新增对应的主机回归、
-HTTP/2 race 检查和安装器原生 Windows junction 回归。
-
-安装器现提供独立的版本命令 `go1.27.2-hmos`：
+源码固定到 [`81bad8b625b9c845961010ea2af776a3cb426b4a`](https://github.com/ZxillyFork/go-hmos/commit/81bad8b625b9c845961010ea2af776a3cb426b4a)，
+全部 16 个 OpenHarmony 移植提交已 rebase 到官方 Go 1.27.4。
+编译器身份为 `go1.27.4-hmos-devel`，保留独立 build ID。
+新增上游证书链、cgo/链接器输入校验和 HTTP 修复，并保留已有 runtime、网络和 CA 修复。
 
 ```sh
-go install github.com/ZxillyFork/go-hmos-installer/go1.27.2-hmos@latest
-go1.27.2-hmos download
+go install github.com/ZxillyFork/go-hmos-installer/go1.27.4-hmos@latest
+go1.27.4-hmos download
 ```
 
-该安装器仍固定已测 `b637b8617624`（与上述新合并提交代码树相同），可与官方 `go1.27.2` helper 并存；旧安装器根入口仍保留
-原版本。最终安装器的 Linux/macOS/Windows 与最低 Go CI 均已通过，详见
-[安装器验证](VALIDATION.md#versioned-installer)。
-先前 `b637b8617624` 已通过 [host 与官方 SDK 检查](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37872123883)，
-覆盖 ARM64 和 AMD64。详细结果、已核验工件及安装器更新状态见
-[VALIDATION.md](VALIDATION.md)。SDK 编译/链接/ELF 检查**不等于目标设备执行**。
-默认推送运行 host 检查；真实 SDK 检查需手动选择 `sdk=true`。
-
-## Linux Go 工具链 SDK 包
-
-版本化 Linux/amd64 工具链 prerelease 及官方 `actions/setup-go` 接入见
-[Linux SDK 文档](docs/linux-sdk.md)。该包只含 Go 工具链，不含 Huawei SDK。
-[`go1.27.2-hmos.1` prerelease](https://github.com/ZxillyFork/go-hmos-build/releases/tag/go1.27.2-hmos.1)
-已发布；[CI 37922403510](https://github.com/ZxillyFork/go-hmos-build/actions/runs/37922403510)
-通过精确合并 SHA 的 host 回归、官方 setup-go 加载、两种目标交叉链接，以及
-发布后的重新下载与摘要校验。已存在版本不会覆盖；设备执行边界不因此扩大。
+旧 `go1.27.2-hmos` 命令仍固定原有源码，两个版本使用独立目录。
+Linux/amd64 二进制预发布 `go1.27.4-hmos.1` 由发布工作流构建和验证，
+下载与官方 `actions/setup-go` 配置见 [Linux SDK 文档](docs/linux-sdk.md)。
+新版本验证记录见 [VALIDATION.md](VALIDATION.md)；下文历史设备结果不代表新版设备验证。
 
 ## GitHub Actions
 
@@ -73,14 +54,14 @@ go1.27.2-hmos download
 审查其代码；构建源代码本身会执行该提交中的程序。
 
 以上验证工作流仅请求 `contents: read`，checkout 不保留凭据，不创建令牌、不发布 release，
-也不修改核心仓库。Actions 固定到已核验的具体提交。工具链使用官方 Go 1.27.2
+也不修改核心仓库。Actions 固定到已核验的具体提交。工具链使用官方 Go 1.27.4
 bootstrap，关闭 setup-go 构建缓存；bootstrap、host test、每个 SDK 架构分别使用
 不同的 GOCACHE。host 检查同时验证 fork 的开发版 build ID，并回归测试与上游
 bootstrap 共用缓存的情况。
 
 ## 本地复现
 
-需要 Linux/amd64、Bash、Python 3、Git、官方 Go 1.27.2，以及本机 C 编译器。
+需要 Linux/amd64、Bash、Python 3、Git、官方 Go 1.27.4，以及本机 C 编译器。
 SDK 检查还需要 curl、GNU tar、unzip 和 sha256sum。脚本不负责安装软件或接受
 SDK 的点击确认条款；使用前请阅读 SDK 随附许可。
 

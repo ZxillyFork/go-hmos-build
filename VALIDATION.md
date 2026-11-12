@@ -1,3 +1,22 @@
+# Go 1.27.4 validation — 2026-11-12
+
+Core: `81bad8b625b9c845961010ea2af776a3cb426b4a`; upstream:
+`7b2881024c95a11ddb86663a616340aa3a88b67f` (`go1.27.4`).
+All 16 OpenHarmony commits were rebased. Range-diff differs only in VERSION;
+all upstream-only and port-only files match their respective source trees.
+
+The supplied upgrade script targeted the older build `main` branch and used a
+merge. This update instead retains the existing `ci/linux-sdk` release pipeline,
+updates packaging and test expectations, and adds compiler/cgo/linker/x509 host
+regressions. The old versioned installer remains pinned to its original source.
+
+Release `go1.27.4-hmos.1` is gated on the current release workflow's host tests,
+setup-go installation and both SDK target link checks. Full SDK checks and native
+installer CI are also run separately. Results will be recorded after completion.
+No Go 1.27.4 device execution is claimed; prior device results below are historical.
+
+---
+
 # Validation record — 2026-10-09
 
 This record distinguishes compilation, Linux-host ABI simulation, and real

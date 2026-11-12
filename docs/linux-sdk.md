@@ -4,20 +4,21 @@
 `openharmony/arm64` 和 `openharmony/amd64`。它不是能在鸿蒙设备上运行的
 Go 主机安装包，也不包含 Huawei 商业 SDK、OpenHarmony native SDK、模拟器或凭据。
 
-当前版本化 prerelease：`go1.27.2-hmos.5`。编译器自身版本保持
-`go1.27.2-hmos-devel`。核心固定到 `hmos-release-branch.go1.27` 的提交
-[`7ea2c37368c408d68804c9bda8f9e74b03fe4122`](https://github.com/ZxillyFork/go-hmos/commit/7ea2c37368c408d68804c9bda8f9e74b03fe4122)。
-此版本修复异步抢占信号 64 穿过 `syscall.Exec` 后终止新程序的问题，保留异步抢占。
+当前版本化 prerelease：`go1.27.4-hmos.1`。编译器自身版本保持
+`go1.27.4-hmos-devel`。核心固定到 `hmos-release-branch.go1.27` 的提交
+[`81bad8b625b9c845961010ea2af776a3cb426b4a`](https://github.com/ZxillyFork/go-hmos/commit/81bad8b625b9c845961010ea2af776a3cb426b4a)。
+此版本将全部 16 个移植提交 rebase 到官方 Go 1.27.4，包含 1.27.3/1.27.4
+的证书链、cgo/链接器输入校验与 HTTP 修复，并保留异步抢占信号 64 穿过 `syscall.Exec` 后终止新程序的问题，保留异步抢占。
 它继承 hmos.4 的 HDC shell UDP DNS 广播选项和 TCP 连接状态查询权限修复，
 并默认读取鸿蒙公共 CA 文件 `/etc/ssl/certs/cacert.pem`。归档摘要和构建记录见
 release 中的 `sdk-manifest.json`；发布工作流通过后提供下载。
 
 ## 发布文件
 
-[版本化 release](https://github.com/ZxillyFork/go-hmos-build/releases/tag/go1.27.2-hmos.5)
+[版本化 release](https://github.com/ZxillyFork/go-hmos-build/releases/tag/go1.27.4-hmos.1)
 包含：
 
-- `go1.27.2-hmos-devel.linux-amd64.tar.gz`：单一顶层 `go/`，包含 `bin/go`、
+- `go1.27.4-hmos-devel.linux-amd64.tar.gz`：单一顶层 `go/`，包含 `bin/go`、
   `bin/gofmt`、`pkg/tool/linux_amd64`、标准库源码、`VERSION`、许可文件。
 - `SHA256SUMS`：上述归档及 `provenance.json` 的 SHA-256。
 - `provenance.json`：确切核心 SHA、构建仓库 SHA、CI run URL、自举版本、目标列表。
@@ -41,15 +42,15 @@ env:
 steps:
   - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
     with:
-      go-version: '1.27.2-hmos-devel'
-      go-download-base-url: 'https://github.com/ZxillyFork/go-hmos-build/releases/download/go1.27.2-hmos.5'
+      go-version: '1.27.4-hmos-devel'
+      go-download-base-url: 'https://github.com/ZxillyFork/go-hmos-build/releases/download/go1.27.4-hmos.1'
       token: ''
       cache: false
   - name: Verify fork identity
     shell: bash
     run: |
-      test "$(go env GOVERSION)" = go1.27.2-hmos-devel
-      test "$(cat "$(go env GOROOT)/core-revision.txt")" = 7ea2c37368c408d68804c9bda8f9e74b03fe4122
+      test "$(go env GOVERSION)" = go1.27.4-hmos-devel
+      test "$(cat "$(go env GOROOT)/core-revision.txt")" = 81bad8b625b9c845961010ea2af776a3cb426b4a
       go tool dist list | grep -Fx openharmony/arm64
 ```
 
@@ -59,8 +60,8 @@ steps:
 它对自定义下载 URL 使用隔离的缓存名，不会复用 stock Go 缓存；自定义下载失败
 会失败退出，不会静默转到官方 Go。发布 tag 不覆盖，同一编译器版本的后续构建
 必须创建新的 `hmos.N` tag 和 URL。
-此固定版本 setup-go 会把 `1.27.2-hmos-devel` 的缓存键规范化为
-`1.27.2-hmos`；再次请求完整版本时可能重新下载。这只影响缓存命中率，
+此固定版本 setup-go 会把 `1.27.4-hmos-devel` 的缓存键规范化为
+`1.27.4-hmos`；再次请求完整版本时可能重新下载。这只影响缓存命中率，
 不会改变编译器身份或退回 stock Go。
 
 setup-go 没有 SHA-256 输入。需要锁定字节的消费端应在仓库中固定
@@ -68,8 +69,8 @@ setup-go 没有 SHA-256 输入。需要锁定字节的消费端应在仓库中�
 选中工具链与已验证归档里的 `bin/go`、`pkg/tool/linux_amd64/compile` 等文件：
 
 ```sh
-base=https://github.com/ZxillyFork/go-hmos-build/releases/download/go1.27.2-hmos.5
-archive=go1.27.2-hmos-devel.linux-amd64.tar.gz
+base=https://github.com/ZxillyFork/go-hmos-build/releases/download/go1.27.4-hmos.1
+archive=go1.27.4-hmos-devel.linux-amd64.tar.gz
 curl --proto '=https' --proto-redir '=https' --fail --location "$base/$archive" -o "$archive"
 # EXPECTED_SHA256 必须是审阅后固定在消费仓库的实际摘要。
 printf '%s  %s\n' "$EXPECTED_SHA256" "$archive" | sha256sum --check -
@@ -119,7 +120,7 @@ C++ 依赖还需等价的 `CXX` 包装器，调用同 SDK 的 `clang++`。
 
 `Linux Go-HMOS SDK prerelease` 工作流：
 
-1. 校验精确核心 SHA，使用官方 Go 1.27.2 自举并执行既有 host、安全和目标代码生成回归。
+1. 校验精确核心 SHA，使用官方 Go 1.27.4 自举并执行既有 host、安全和目标代码生成回归。
 2. 打包到标准布局，生成 SHA-256、来源记录；归档排除 VCS、native SDK 和凭据。
 3. 在本地只读 HTTP 端点提供候选包，由真正的官方 setup-go 加载。
 4. 检查 fork 版本和来源，验证两种架构的静态 CLI 无动态依赖，使用公开 native SDK 对两种目标

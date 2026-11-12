@@ -25,7 +25,7 @@ env:
 jobs:
   package-and-test:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     outputs:
       tag: ${{ steps.config.outputs.tag }}
       version: ${{ steps.config.outputs.version }}
@@ -61,7 +61,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          go-version: '1.27.2'
+          go-version: '1.27.4'
           cache: false
       - name: Bootstrap exact release-branch revision and run host regressions
         env:
@@ -147,7 +147,7 @@ jobs:
           r = json.load(open(sys.argv[1]))
           assert r['isPrerelease'] is True
           assert sorted(a['name'] for a in r['assets']) == sorted([
-              'go1.27.2-hmos-devel.linux-amd64.tar.gz', 'SHA256SUMS',
+              'go1.27.4-hmos-devel.linux-amd64.tar.gz', 'SHA256SUMS',
               'provenance.json', 'sdk-manifest.json'])
           PY
             gh release download "$RELEASE_TAG" --dir "$RUNNER_TEMP/existing-sdk"
