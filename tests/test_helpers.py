@@ -41,7 +41,7 @@ class SourcePinTest(unittest.TestCase):
     def test_manifest_repository_and_bootstrap(self):
         manifest = json.loads((ROOT / "source.json").read_text())
         self.assertEqual(manifest["repository"], "ZxillyFork/go-hmos")
-        self.assertEqual(manifest["bootstrap_version"], "1.27.2")
+        self.assertEqual(manifest["bootstrap_version"], "1.27.4")
 
 
 class HostEnvironmentTest(unittest.TestCase):
@@ -70,14 +70,16 @@ if sys.argv[1] == "tool":
             self.assertEqual(result.returncode, 0, result.stderr)
             calls = [json.loads(line) for line in log.read_text().splitlines()]
             security = [call for call in calls if "-count=1" in call["args"]]
-            self.assertEqual(len(security), 3)
+            self.assertEqual(len(security), 4)
             for call in security:
                 self.assertEqual(call["cwd"], str(root / "src"))
                 self.assertEqual(call["module"], "on")
                 self.assertEqual(call["gopath"], str(root / "cache/gopath"))
-            self.assertIn("crypto/tls", security[0]["args"])
-            self.assertIn("os", security[1]["args"])
-            self.assertIn("-race", security[2]["args"])
+            self.assertIn("cmd/go/internal/work", security[0]["args"])
+            self.assertIn("crypto/x509", security[1]["args"])
+            self.assertIn("crypto/tls", security[1]["args"])
+            self.assertIn("os", security[2]["args"])
+            self.assertIn("-race", security[3]["args"])
 
 
 class SDKDownloadTest(unittest.TestCase):

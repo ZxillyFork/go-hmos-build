@@ -63,7 +63,7 @@ jobs:
     needs: scripts-and-source
     if: needs.scripts-and-source.outputs.core_sha != ''
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       GO_SOURCE_ROOT: ${{ github.workspace }}/source
       GO_HMOS_CACHE_ROOT: ${{ github.workspace }}/.cache
@@ -79,7 +79,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: 1.27.2
+          go-version: 1.27.4
           cache: false
       - name: Verify checkout and bootstrap the modified host toolchain
         env:
@@ -111,7 +111,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: 1.27.2
+          go-version: 1.27.4
           cache: false
       - name: Verify checkout and bootstrap
         env:

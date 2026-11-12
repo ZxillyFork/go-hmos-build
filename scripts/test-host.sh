@@ -26,9 +26,11 @@ go test cmd/go -run '^TestScript/build_openharmony$'
 # Standard-library behavioral tests need src/go.mod's current Go defaults.
 # GOPATH mode would instead select Go 1.20 GODEBUG compatibility settings.
 export GO111MODULE=on GOPATH="$cache_root/gopath"
-# Exercise the upstream Go 1.27.2 security fixes with the rebuilt fork.
+# Exercise the upstream Go 1.27.2 through Go 1.27.4 security fixes.
+go test -count=1 -timeout=15m cmd/go/internal/work cmd/cgo \
+  cmd/compile/internal/noder cmd/link/internal/ld
 # Windows junction handling also requires the installer CI's native Windows run.
-go test -count=1 -timeout=10m crypto/tls net/textproto net/http \
+go test -count=1 -timeout=10m crypto/x509 crypto/tls net/textproto net/http \
   net/http/httputil net/http/internal/http2 mime/multipart
 go test -count=1 -timeout=10m os \
   -run '^TestRootMulti(Mkdir|MkdirAllShallow|MkdirAllDeep|Lstat|Open|OpenFile|Stat|ReadFile|Readlink)$'
