@@ -7,6 +7,7 @@ Go 核心仓库只保留移植代码、测试和平台文档；GitHub Actions、
 
 **移植仍是实验性的。交叉编译成功不代表已在 OpenHarmony 或 HarmonyOS NEXT
 设备上运行。** 当前已完成和未完成的验证分别记录在 [VALIDATION.md](VALIDATION.md)。
+以下设备结果来自历史 Go 1.27.2 构建，不代表 Go 1.27.4 设备验证。
 官方 x64 模拟器已实际运行 Go hello、runtime/GC/线程/timer、crypto/TLS、cgo
 与两种 dlopen 隔离测试；18 个标准库包的 130 个顶层用例通过，1 个显式 short-mode
 跳过。旧 HDC shell 流程仍因网络限制失败，同操作原生 C 对照也被拒绝。
@@ -14,7 +15,7 @@ Go 核心仓库只保留移植代码、测试和平台文档；GitHub Actions、
 release 应用、外网/DNS、真机与 ARM 仍未验证。见[应用进程实测记录](VALIDATION.md#normal-app-process-network-validation)。
 
 目标平台限制见核心仓库的
-[平台说明](https://github.com/ZxillyFork/go-hmos/blob/b637b8617624655906b737977f50de5280bf7f65/doc/openharmony.md)。
+[平台说明](https://github.com/ZxillyFork/go-hmos/blob/81bad8b625b9c845961010ea2af776a3cb426b4a/doc/openharmony.md)。
 
 ## 当前版本：Go 1.27.4
 

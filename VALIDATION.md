@@ -10,9 +10,30 @@ merge. This update instead retains the existing `ci/linux-sdk` release pipeline,
 updates packaging and test expectations, and adds compiler/cgo/linker/x509 host
 regressions. The old versioned installer remains pinned to its original source.
 
-Release `go1.27.4-hmos.1` is gated on the current release workflow's host tests,
-setup-go installation and both SDK target link checks. Full SDK checks and native
-installer CI are also run separately. Results will be recorded after completion.
+Release [`go1.27.4-hmos.1`](https://github.com/ZxillyFork/go-hmos-build/releases/tag/go1.27.4-hmos.1)
+is published as an experimental prerelease. Build commit:
+`0ba99d01e89674606e46d54fa50a563488e9b848`.
+
+- [Release workflow 43202444583](https://github.com/ZxillyFork/go-hmos-build/actions/runs/43202444583):
+  both jobs passed, including host/security regressions, packaged SDK installation
+  through official setup-go, both target link checks, publication, re-download,
+  checksum verification and compilation with the published distribution.
+- [Full validation 43202446858](https://github.com/ZxillyFork/go-hmos-build/actions/runs/43202446858):
+  all three jobs passed: 75 helper tests, host/cache/API/codegen/security tests,
+  and ARM64/AMD64 SDK compile/link/ELF checks (including c-shared/c-archive/PIE).
+- [Installer CI 43202462797](https://github.com/ZxillyFork/go-hmos-installer/actions/runs/43202462797):
+  all four jobs passed on installer commit `30d840a42bc2306c2ee861772843a405cfcf730f`:
+  minimum Go compatibility and native Linux/macOS/Windows source installations,
+  old/new command coexistence, cached download, relocation and os.Root regressions.
+- Public `go install github.com/ZxillyFork/go-hmos-installer/go1.27.4-hmos@latest`
+  was also verified on Windows; the launcher reports the expected core SHA.
+- Local WSL helper tests (75), installer unit tests and go vet passed. The local
+  Windows legacy installer test encountered an elevation heuristic; the native
+  Windows CI completed successfully, including the new source installation.
+
+Published archive: `go1.27.4-hmos-devel.linux-amd64.tar.gz` (101,561,914 bytes).
+SHA-256: `71b03c492f19c9161c4aa0d36af2768835ad0fba001809cdfbab1928a738cbc3`.
+The release manifest, source branch and installer all reference the same core SHA.
 No Go 1.27.4 device execution is claimed; prior device results below are historical.
 
 ---
